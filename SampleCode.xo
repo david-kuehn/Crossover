@@ -1,0 +1,4 @@
+var myInt = 14;                 //Int variable, identifier is myInt, declared by 'var'
+var myString = 'My age is: ';   //String variable, identifier is myString, SINGLE QUOTES ONLY, declared by 'var'
+var theTime = 8.35;             //Float variable, identifier is theTime, declared by 'var'
+

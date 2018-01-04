@@ -12,7 +12,7 @@ public class Tokenizer
     public List<Token> InputToTokensList(string input)
     {
         List<Token> tokensFromInput;
-
+        
         //Handle token checks while current position in input is less than the total length
         while (positionInInput <= inputChars.Length)
         {

@@ -1,2 +1,6 @@
 .vs/
-omnisharp.json
+bin/
+obj/
+*.csproj
+*.user
+*.sln
