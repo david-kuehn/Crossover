@@ -4,14 +4,16 @@ using System.Collections.Generic;
 public class Tokenizer 
 {
     string input;
-    char[] inputChars = input.ToCharArray();
+    char[] inputChars;
 
     int positionInInput;
 
     //Returns a list of tokens from the input
     public List<Token> InputToTokensList(string input)
     {
-        List<Token> tokensFromInput;
+        inputChars = input.ToCharArray();
+
+        List<Token> tokensFromInput = new List<Token>();
         
         //Handle token checks while current position in input is less than the total length
         while (positionInInput <= inputChars.Length)
@@ -24,7 +26,7 @@ public class Tokenizer
                         if (inputChars[positionInInput + 3].Equals(' '))
                         {
                             //Add a new Variable Declaration token
-                            tokensFromInput.Add(new Token(TokenType.VariableDeclaration), "var");
+                            tokensFromInput.Add(new Token(TokenType.VariableDeclaration, "var"));
                             positionInInput += 3;
                         }
             }
@@ -42,7 +44,7 @@ public class Tokenizer
                 if (inputChars[positionInInput].Equals('t'))
                 {
                     string checkTrue;
-                    checkTrue = inputChars[positionInInput];
+                    checkTrue = inputChars[positionInInput].ToString();
 
                     //For the next three characters in the input
                     for (int i = 0; i < 3; i++)
@@ -52,7 +54,7 @@ public class Tokenizer
                     }
 
                     //If they form the word true AND the character after 'true' isn't a letter/digit (makes sure it isn't identifier)
-                    if (checkTrue == "true" && !Char.isLetterOrDigit(inputChars[positionInInput+4]))
+                    if (checkTrue == "true" && !Char.IsLetterOrDigit(inputChars[positionInInput+4]))
                     {
                         tokensFromInput.Add(new Token(TokenType.BoolVariable, "true"));
 
@@ -64,7 +66,7 @@ public class Tokenizer
                 else if (inputChars[positionInInput].Equals('f'))
                 {
                     string checkFalse;
-                    checkFalse = inputChars[positionInInput];
+                    checkFalse = inputChars[positionInInput].ToString();
 
                     //For the next four characters in the input
                     for (int i = 0; i < 4; i++)
@@ -74,7 +76,7 @@ public class Tokenizer
                     }
 
                     //If they form the word false AND the character after 'false' isn't a letter/digit (makes sure it isn't identifier)
-                    if (checkFalse == "false" && !Char.isLetterOrDigit(inputChars[positionInInput + 5]))
+                    if (checkFalse == "false" && !Char.IsLetterOrDigit(inputChars[positionInInput + 5]))
                     {
                         tokensFromInput.Add(new Token(TokenType.BoolVariable, "false"));
 
@@ -88,6 +90,12 @@ public class Tokenizer
             else if (Char.IsLetter(inputChars[positionInInput]))
             {
                 tokensFromInput.Add(CheckForIdentifier());
+            }
+
+            //If int or float declaration is detected
+            else if (Char.IsDigit(inputChars[positionInInput]))
+            {
+                tokensFromInput.Add(CheckForIntOrFloat());
             }
 
             //If no token can be identified, go to next character (i.e. space)
@@ -147,7 +155,7 @@ public class Tokenizer
             char character = inputChars[position];
 
             //If character ends the string
-            if (inputChars[positionInInput].Equals("'"))
+            if (character.Equals("'"))
             {
                 //Break out of the loop
                 break;
@@ -168,6 +176,55 @@ public class Tokenizer
         return newIdentifierToken;
     }
 
+    Token CheckForIntOrFloat()
+    {
+        Token newToken = new Token();
+
+        bool isFloat = false;
+
+        int position = positionInInput;
+
+        //While current position is less than or equal to the length of the input
+        while (position <= input.Length)
+        {
+            //Current character
+            char character = inputChars[position];
+
+            //If character is a decimal point and doesn't already have one and the next character is a digit
+            if (character.Equals(".") && !isFloat && Char.IsDigit(inputChars[position+1]))
+            {
+                //The new token is a float
+                isFloat = true;
+            }
+
+            //If character is not a digit and the token isn't a float
+            else if (!Char.IsDigit(character) && !isFloat)
+            {
+                newToken.type = TokenType.IntVariable;
+                break;
+            }
+
+            //If character is not a digit and the token is a float
+            else if (!Char.IsDigit(character) && isFloat)
+            {
+                newToken.type = TokenType.FloatVariable;
+                break;
+            }
+
+            //Add character to new token
+            newToken.value += character;
+
+            //Go to next char
+            position += 1;
+        }
+
+        //Update global position to include changes to local position
+        positionInInput += newToken.value.Length;
+
+        //Return new token
+        return newToken;
+    }
+
     Tokenizer(string _input)
     {
         input = _input; 
@@ -177,27 +234,32 @@ public class Tokenizer
 public class Token 
 {
     public TokenType type; 
-    public var value;
+    public dynamic value;
 
-    Token (TokenType _type, string _value)
+    public Token()
+    {
+
+    }
+
+    public Token (TokenType _type, string _value)
     {
         type = _type; 
         value = _value;
     }
 
-    Token(TokenType _type, bool _value)
+    public Token(TokenType _type, bool _value)
     {
         type = _type;
         value = _value;
     }
 
-    Token(TokenType _type, int _value)
+    public Token(TokenType _type, int _value)
     {
         type = _type;
         value = _value;
     }
 
-    Token(TokenType _type, float _value)
+    public Token(TokenType _type, float _value)
     {
         type = _type;
         value = _value;

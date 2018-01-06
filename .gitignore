@@ -1,6 +1,8 @@
 .vs/
 bin/
 obj/
+Costura.Fody/
+packages/
 *.csproj
 *.user
 *.sln
