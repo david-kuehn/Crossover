@@ -27,78 +27,50 @@ namespace Crossover
             while (positionInInput < inputChars.Length)
             {
                 //If comment is detected
-                if (inputChars[positionInInput].Equals((char)47))
+                if (inputChars[positionInInput].Equals((char)47) && !inputChars[positionInInput].Equals((char)102))
                 {
                     if (inputChars[positionInInput + 1].Equals((char)47))
                         tokensFromInput.Add(CheckForComment());
                 }
 
                 //If variable declaration is detected ('var')
-                else if (inputChars[positionInInput].Equals('v'))
+                else if (inputChars[positionInInput].Equals('v') && inputChars[positionInInput + 1].Equals('a') && inputChars[positionInInput + 2].Equals('r') && inputChars[positionInInput + 3].Equals(' '))
                 {
-                    if (inputChars[positionInInput + 1].Equals('a'))
-                        if (inputChars[positionInInput + 2].Equals('r'))
-                            if (inputChars[positionInInput + 3].Equals(' '))
-                            {
-                                //Add a new Variable Declaration token
-                                tokensFromInput.Add(new Token(TokenType.VariableDeclaration, "var"));
-                                positionInInput += 3;
-                            }
+                    //Add a new Variable Declaration token
+                    tokensFromInput.Add(new Token(TokenType.VariableDeclaration, "var"));
+                    positionInInput += 3;
                 }
 
-                //If string declaration is detected (single quote) using Unicode for single quote/apostrophe
+                //If string is detected (single quote) using Unicode for single quote/apostrophe
                 else if (inputChars[positionInInput].Equals((char)8.217) || inputChars[positionInInput].Equals((char)39))
                 {
                     tokensFromInput.Add(CheckForString());
                 }
 
-                //If bool declaration is detected ('true', 'false')
-                else if (inputChars[positionInInput].Equals('t') || inputChars[positionInInput].Equals('f'))
+                //If 'true' is detected (bool variable)
+                else if (inputChars[positionInInput].Equals('t') && inputChars[positionInInput+1].Equals('r') && inputChars[positionInInput + 2].Equals('u') && inputChars[positionInInput + 3].Equals('e') && !Char.IsLetterOrDigit(inputChars[positionInInput + 4]))
                 {
-                    //If the character is a 't'
-                    if (inputChars[positionInInput].Equals('t'))
-                    {
-                        string checkTrue;
-                        checkTrue = inputChars[positionInInput].ToString();
+                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "true"));
 
-                        //For the next three characters in the input
-                        for (int i = 0; i < 3; i++)
-                        {
-                            //Add them to the checkTrue string
-                            checkTrue += inputChars[positionInInput + i];
-                        }
+                    //Relocates position to character after 'true' word
+                    positionInInput += 4;
+                }
+                  
+                //If 'false' is detected (bool variable)
+                else if (inputChars[positionInInput].Equals('f') && inputChars[positionInInput + 1].Equals('a') && inputChars[positionInInput + 2].Equals('l') && inputChars[positionInInput + 3].Equals('s') && inputChars[positionInInput + 4].Equals('e') && !Char.IsLetterOrDigit(inputChars[positionInInput + 5]))
+                {
+                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "false"));
 
-                        //If they form the word true AND the character after 'true' isn't a letter/digit (makes sure it isn't identifier)
-                        if (checkTrue == "true" && !Char.IsLetterOrDigit(inputChars[positionInInput + 4]))
-                        {
-                            tokensFromInput.Add(new Token(TokenType.BoolVariable, "true"));
+                    //Relocates position to character after 'false' word
+                    positionInInput += 5;
+                }
 
-                            //Relocates position to character after 'true' word
-                            positionInInput += 4;
-                        }
-                    }
-
-                    else if (inputChars[positionInInput].Equals('f'))
-                    {
-                        string checkFalse;
-                        checkFalse = inputChars[positionInInput].ToString();
-
-                        //For the next four characters in the input
-                        for (int i = 0; i < 4; i++)
-                        {
-                            //Add them to the checkFalse string
-                            checkFalse += inputChars[positionInInput + i];
-                        }
-
-                        //If they form the word false AND the character after 'false' isn't a letter/digit (makes sure it isn't identifier)
-                        if (checkFalse == "false" && !Char.IsLetterOrDigit(inputChars[positionInInput + 5]))
-                        {
-                            tokensFromInput.Add(new Token(TokenType.BoolVariable, "false"));
-
-                            //Relocates position to character after 'false' word
-                            positionInInput += 5;
-                        }
-                    }
+                //If function declaration is detected
+                else if (inputChars[positionInInput].Equals('f') && inputChars[positionInInput + 1].Equals('u') && inputChars[positionInInput + 2].Equals('n') && inputChars[positionInInput + 3].Equals('c') && inputChars[positionInInput + 4].Equals('t') && inputChars[positionInInput + 5].Equals('i') && inputChars[positionInInput + 6].Equals('o') && inputChars[positionInInput + 7].Equals('n') && inputChars[positionInInput + 8].Equals(' '))
+                {
+                    //Add a new Function token
+                    tokensFromInput.Add(new Token(TokenType.FunctionDeclaration, "function"));
+                    positionInInput += 8;
                 }
 
                 //If identifier is detected (letter)
@@ -107,7 +79,7 @@ namespace Crossover
                     tokensFromInput.Add(CheckForIdentifier());
                 }
 
-                //If int or float declaration is detected
+                //If int or float is detected
                 else if (Char.IsDigit(inputChars[positionInInput]))
                 {
                     tokensFromInput.Add(CheckForIntOrFloat());
@@ -333,21 +305,21 @@ namespace Crossover
 
     public enum TokenType
     {
-        Comment,            // \\
+        Comment,            // '//'
         VariableDeclaration, //var
         StringVariable,     //' to '
         BoolVariable,       //letter AND true, false
         IntVariable,        //digit, NO decimal
         FloatVariable,      //digit, decimal
         Identifier,         //MUST START WITH letter, CAN CONTAIN digit, _ (underscore)
-        Function,           //exec
-        Operator,           //+, -, *, /, =
-        GreaterThan,        //>
-        LessThan,           //<
-        DblEquals,          //==
-        DoesNotEqual,       //!=
-        GreaterThanOrEqualTo, //>=
-        LessThanOrEqualTo,   //<=
+        FunctionDeclaration, //function
+        ExclusiveKeyword,   //exclusive
+        PrintKeyword,       //print
+        MathematicalOperator, //+, -, *, /, =
+        ComparisonOperator, //>, <, ==, !=, >=, <=, and, or
+        Parenthesis,        //(, )
+        CurlyBrace,         //{, }
+        SquareBracket,      //[, ]
         LineEnding          //;
     }
 }
