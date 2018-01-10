@@ -1,11 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using Crossover;
 
 namespace Crossover
 {
     //Compiler class
-    class Crossover
+    static class CrossoverCompiler
     {
         static void Main(string[] args)
         {
@@ -22,6 +23,14 @@ namespace Crossover
                 }
                 input = String.Empty;
             }
+        }
+
+        public static void ThrowCompilerError(string errorText, int onLine)
+        {
+            string errorTextToThrow = errorText + $"(Line {onLine + 1})";
+
+            Console.WriteLine(errorTextToThrow);
+            Environment.Exit(0);
         }
     }
 }
