@@ -147,10 +147,32 @@ namespace Crossover
                     inputChars[positionInInput].Equals((char)38) || //&
                     inputChars[positionInInput].Equals((char)124))  //|
                 {
-                    //Add a new token based on result of CheckForOperator
-                    tokensFromInput.Add(CheckForOperatorAndEquals());
+                    //Add a new token based on result of CheckForOperatorOrEquals
+                    tokensFromInput.Add(CheckForOperatorOrEquals());
                 }
 #endregion
+                //If parenthesis, square bracket, or curly brace is detected
+                else if (
+#region
+                    inputChars[positionInInput].Equals((char)40) || //(
+                    inputChars[positionInInput].Equals((char)41) || //)
+                    inputChars[positionInInput].Equals((char)91) || //[
+                    inputChars[positionInInput].Equals((char)93) || //]
+                    inputChars[positionInInput].Equals((char)123)|| //{
+                    inputChars[positionInInput].Equals((char)125))  //}
+                {
+                    //Add new token based on result of CheckForParenthesisBracketBrace
+                    tokensFromInput.Add(CheckForParenthesisBracketBrace());
+                }
+#endregion
+                //If comma is detected
+                else if (inputChars[positionInInput].Equals((char)44))
+                {
+                    //Add a new Comma token
+                    tokensFromInput.Add(new Token(TokenType.Comma, ","));
+                    positionInInput += 1;
+                }
+
                 //If line end is detected (semicolon)
                 else if (inputChars[positionInInput].Equals((char)59))
                 {
@@ -333,7 +355,7 @@ namespace Crossover
             return newToken;
         }
 
-        Token CheckForOperatorAndEquals()
+        Token CheckForOperatorOrEquals()
         {
             Token newIdentifierToken = new Token();
 
@@ -429,6 +451,81 @@ namespace Crossover
                     //Break out of the loop
                     break;
                 }
+
+                //If character is an equals
+                else if (character.Equals((char)61))
+                {
+                    //Character is the value of the new Equals token
+                    newIdentifierToken.value += character;
+                    newIdentifierToken.type = TokenType.Equals;
+
+                    //Add one to the position
+                    position += 1;
+
+                    //Break out of the loop
+                    break;
+                }
+            }
+
+            //Update global position to include changes to local position
+            positionInInput += newIdentifierToken.value.Length;
+
+            return newIdentifierToken;
+        }
+
+        Token CheckForParenthesisBracketBrace()
+        {
+            Token newIdentifierToken = new Token();
+
+            int position = positionInInput;
+
+            //While current position is less than or equal to the length of the input
+            while (position < input.Length)
+            {
+                //Current character
+                char character = inputChars[position];
+
+                //If character is a left or right parenthesis
+                if (character.Equals((char)40) || character.Equals((char)41))
+                {
+                    //Character is the value of the new Parenthesis token
+                    newIdentifierToken.value += character;
+                    newIdentifierToken.type = TokenType.Parenthesis;
+
+                    //Add one to the position
+                    position += 1;
+
+                    //Break out of the loop
+                    break;
+                }
+
+                //If character is a left or right square bracket
+                else if (character.Equals((char)91) || character.Equals((char)93))
+                {
+                    //Character is the value of the new Bracket token
+                    newIdentifierToken.value += character;
+                    newIdentifierToken.type = TokenType.SquareBracket;
+
+                    //Add one to the position
+                    position += 1;
+
+                    //Break out of the loop
+                    break;
+                }
+
+                //If character is a left or right curly brace
+                else if (character.Equals((char)123) || character.Equals((char)125))
+                {
+                    //Character is the value of the new Brace token
+                    newIdentifierToken.value += character;
+                    newIdentifierToken.type = TokenType.CurlyBrace;
+
+                    //Add one to the position
+                    position += 1;
+
+                    //Break out of the loop
+                    break;
+                }
             }
 
             //Update global position to include changes to local position
@@ -445,7 +542,7 @@ namespace Crossover
 
         public Token()
         {
-
+            //Empty constructor
         }
 
         public Token(TokenType _type, string _value)
@@ -493,6 +590,7 @@ namespace Crossover
         Parenthesis,        //(, )
         CurlyBrace,         //{, }
         SquareBracket,      //[, ]
+        Comma,              //,
         LineEnding          //;
     }
 }
