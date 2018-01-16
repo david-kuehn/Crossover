@@ -36,7 +36,7 @@ namespace Crossover
                 else if (inputChars[positionInInput].Equals('v') && inputChars[positionInInput + 1].Equals('a') && inputChars[positionInInput + 2].Equals('r') && inputChars[positionInInput + 3].Equals(' '))
                 {
                     //Add a new Variable Declaration token
-                    tokensFromInput.Add(new Token(TokenType.VariableDeclaration, "var"));
+                    tokensFromInput.Add(new Token(TokenType.VariableDeclaration, "var", lineIndex));
                     positionInInput += 3;
                 }
 
@@ -49,7 +49,7 @@ namespace Crossover
                 //If 'true' is detected (bool variable)
                 else if (inputChars[positionInInput].Equals('t') && inputChars[positionInInput + 1].Equals('r') && inputChars[positionInInput + 2].Equals('u') && inputChars[positionInInput + 3].Equals('e') && !Char.IsLetterOrDigit(inputChars[positionInInput + 4]))
                 {
-                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "true"));
+                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "true", lineIndex));
 
                     //Relocates position to character after 'true' word
                     positionInInput += 4;
@@ -58,7 +58,7 @@ namespace Crossover
                 //If 'false' is detected (bool variable)
                 else if (inputChars[positionInInput].Equals('f') && inputChars[positionInInput + 1].Equals('a') && inputChars[positionInInput + 2].Equals('l') && inputChars[positionInInput + 3].Equals('s') && inputChars[positionInInput + 4].Equals('e') && !Char.IsLetterOrDigit(inputChars[positionInInput + 5]))
                 {
-                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "false"));
+                    tokensFromInput.Add(new Token(TokenType.BoolVariable, "false", lineIndex));
 
                     //Relocates position to character after 'false' word
                     positionInInput += 5;
@@ -74,7 +74,23 @@ namespace Crossover
                 else if (inputChars[positionInInput].Equals('f') && inputChars[positionInInput + 1].Equals('u') && inputChars[positionInInput + 2].Equals('n') && inputChars[positionInInput + 3].Equals('c') && inputChars[positionInInput + 4].Equals('t') && inputChars[positionInInput + 5].Equals('i') && inputChars[positionInInput + 6].Equals('o') && inputChars[positionInInput + 7].Equals('n') && inputChars[positionInInput + 8].Equals(' '))
                 {
                     //Add a new Function token
-                    tokensFromInput.Add(new Token(TokenType.FunctionDeclaration, "function"));
+                    tokensFromInput.Add(new Token(TokenType.FunctionDeclaration, "function", lineIndex));
+                    positionInInput += 8;
+                }
+
+                //If 'use' keyword is detected
+                else if (inputChars[positionInInput].Equals('u') && inputChars[positionInInput + 1].Equals('s') && inputChars[positionInInput + 2].Equals('e') && inputChars[positionInInput + 3].Equals(' '))
+                {
+                    //Add a new UseKeyword token
+                    tokensFromInput.Add(new Token(TokenType.UseKeyword, "use", lineIndex));
+                    positionInInput += 3;
+                }
+
+                //If 'external' keyword is detected
+                else if (inputChars[positionInInput].Equals('e') && inputChars[positionInInput + 1].Equals('x') && inputChars[positionInInput + 2].Equals('t') && inputChars[positionInInput + 3].Equals('e') && inputChars[positionInInput + 4].Equals('r') && inputChars[positionInInput + 5].Equals('n') && inputChars[positionInInput + 6].Equals('a') && inputChars[positionInInput + 7].Equals('l') && inputChars[positionInInput + 8].Equals('.'))
+                {
+                    //Add a new Function token
+                    tokensFromInput.Add(new Token(TokenType.FunctionDeclaration, "function", lineIndex));
                     positionInInput += 8;
                 }
 
@@ -92,7 +108,7 @@ namespace Crossover
                 inputChars[positionInInput + 9].Equals(' '))
                 {
                     //Add a new Function token
-                    tokensFromInput.Add(new Token(TokenType.ExclusiveKeyword, "exclusive"));
+                    tokensFromInput.Add(new Token(TokenType.ExclusiveKeyword, "exclusive", lineIndex));
                     positionInInput += 9;
                 }
 #endregion                
@@ -100,7 +116,7 @@ namespace Crossover
                 else if (inputChars[positionInInput].Equals('i') && inputChars[positionInInput + 1].Equals('f') && inputChars[positionInInput + 2].Equals(' '))
                 {
                     //Add a new IfKeyword token
-                    tokensFromInput.Add(new Token(TokenType.IfKeyword, "if"));
+                    tokensFromInput.Add(new Token(TokenType.IfKeyword, "if", lineIndex));
                     positionInInput += 2;
                 }
 
@@ -108,7 +124,7 @@ namespace Crossover
                 else if (inputChars[positionInInput].Equals('f') && inputChars[positionInInput + 1].Equals('o') && inputChars[positionInInput + 2].Equals('r') && inputChars[positionInInput + 3].Equals(' '))
                 {
                     //Add a new ForKeyword token
-                    tokensFromInput.Add(new Token(TokenType.ForKeyword, "for"));
+                    tokensFromInput.Add(new Token(TokenType.ForKeyword, "for", lineIndex));
                     positionInInput += 3;
                 }
 
@@ -123,7 +139,7 @@ namespace Crossover
                 inputChars[positionInInput + 6].Equals(' '))
                 {
                     //Add a new ReturnKeyword token
-                    tokensFromInput.Add(new Token(TokenType.ReturnKeyword, "return"));
+                    tokensFromInput.Add(new Token(TokenType.ReturnKeyword, "return", lineIndex));
                     positionInInput += 6;
                 }
 #endregion
@@ -164,12 +180,20 @@ namespace Crossover
                     //Add new token based on result of CheckForParenthesisBracketBrace
                     tokensFromInput.Add(CheckForParenthesisBracketBrace());
                 }
-#endregion
+                #endregion
+                //If period is detected
+                else if (inputChars[positionInInput].Equals((char)46))
+                {
+                    //Add a new Period token
+                    tokensFromInput.Add(new Token(TokenType.Period, ".", lineIndex));
+                    positionInInput += 1;
+                }
+
                 //If comma is detected
                 else if (inputChars[positionInInput].Equals((char)44))
                 {
                     //Add a new Comma token
-                    tokensFromInput.Add(new Token(TokenType.Comma, ","));
+                    tokensFromInput.Add(new Token(TokenType.Comma, ",", lineIndex));
                     positionInInput += 1;
                 }
 
@@ -177,7 +201,7 @@ namespace Crossover
                 else if (inputChars[positionInInput].Equals((char)59))
                 {
                     //Adds new line ending token
-                    tokensFromInput.Add(new Token(TokenType.LineEnding, ";"));
+                    tokensFromInput.Add(new Token(TokenType.LineEnding, ";", lineIndex));
 
                     //Adds one to position and line index
                     positionInInput += 1;
@@ -197,6 +221,8 @@ namespace Crossover
         Token CheckForComment()
         {
             Token newToken = new Token();
+
+            newToken.isOnLine = lineIndex;
 
             int position = positionInInput;
 
@@ -232,6 +258,8 @@ namespace Crossover
         {
             Token newIdentifierToken = new Token();
 
+            newIdentifierToken.isOnLine = lineIndex;
+
             int position = positionInInput;
 
             //While current position is less than or equal to the length of the input
@@ -264,12 +292,14 @@ namespace Crossover
 
         Token CheckForString()
         {
-            Token newIdentifierToken = new Token();
+            Token newStringToken = new Token();
+
+            newStringToken.isOnLine = lineIndex;
 
             int position = positionInInput;
 
             //Add first single quote to new token and advance position
-            newIdentifierToken.value += inputChars[position];
+            newStringToken.value += inputChars[position];
             position += 1;
 
             //While current position is less than or equal to the length of the input
@@ -282,7 +312,7 @@ namespace Crossover
                 if (character.Equals((char)8.217) || character.Equals((char)39))
                 {
                     //Add character to new token
-                    newIdentifierToken.value += character;
+                    newStringToken.value += character;
 
                     //Go to next char
                     position += 1;
@@ -292,23 +322,25 @@ namespace Crossover
                 }
 
                 //Add character to new token
-                newIdentifierToken.value += character;
+                newStringToken.value += character;
 
                 //Go to next char
                 position += 1;
             }
 
             //Update global position to include changes to local position
-            positionInInput += newIdentifierToken.value.Length;
+            positionInInput += newStringToken.value.Length;
 
             //Return new token of type StringVariable
-            newIdentifierToken.type = TokenType.StringVariable;
-            return newIdentifierToken;
+            newStringToken.type = TokenType.StringVariable;
+            return newStringToken;
         }
 
         Token CheckForIntOrFloat()
         {
             Token newToken = new Token();
+
+            newToken.isOnLine = lineIndex;
 
             bool isFloat = false;
 
@@ -357,7 +389,9 @@ namespace Crossover
 
         Token CheckForOperatorOrEquals()
         {
-            Token newIdentifierToken = new Token();
+            Token newToken = new Token();
+
+            newToken.isOnLine = lineIndex;
 
             int position = positionInInput;
 
@@ -371,8 +405,8 @@ namespace Crossover
                 if (character.Equals((char)43) || character.Equals((char)45) || character.Equals((char)42) || character.Equals((char)47))  //+, -, *, or /
                 {
                     //Character is the value of the new MathematicalOperator token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.MathematicalOperator;
+                    newToken.value += character;
+                    newToken.type = TokenType.MathematicalOperator;
 
                     //Add one to the position
                     position += 1;
@@ -388,9 +422,9 @@ namespace Crossover
                     if (inputChars[position + 1].Equals((char)61))
                     {
                         //Character + the equals is the value of the new ComparisonOperator token
-                        newIdentifierToken.value += character;
-                        newIdentifierToken.value += inputChars[position + 1];
-                        newIdentifierToken.type = TokenType.ComparisonOperator;
+                        newToken.value += character;
+                        newToken.value += inputChars[position + 1];
+                        newToken.type = TokenType.ComparisonOperator;
 
                         //Add one to the position
                         position += 1;
@@ -403,8 +437,8 @@ namespace Crossover
                     else
                     {
                         //Character is the value of the new ComparisonOperator token
-                        newIdentifierToken.value += character;
-                        newIdentifierToken.type = TokenType.ComparisonOperator;
+                        newToken.value += character;
+                        newToken.type = TokenType.ComparisonOperator;
 
                         //Add one to the position
                         position += 1;
@@ -428,9 +462,9 @@ namespace Crossover
                     else if (character.Equals((char)33) && inputChars[position + 1].Equals((char)61))
                     {
                         //If it does, return a token with !=
-                        newIdentifierToken.value += character;
-                        newIdentifierToken.value += inputChars[position + 1];
-                        newIdentifierToken.type = TokenType.ComparisonOperator;
+                        newToken.value += character;
+                        newToken.value += inputChars[position + 1];
+                        newToken.type = TokenType.ComparisonOperator;
 
                         //Add two to the position
                         position += 2;
@@ -442,8 +476,8 @@ namespace Crossover
                     //If character doesn't meet either of the above if-checks (it's & or |)
 
                     //Character is the value of the new ComparisonOperator token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.ComparisonOperator;
+                    newToken.value += character;
+                    newToken.type = TokenType.ComparisonOperator;
 
                     //Add one to the position
                     position += 1;
@@ -456,8 +490,8 @@ namespace Crossover
                 else if (character.Equals((char)61))
                 {
                     //Character is the value of the new Equals token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.Equals;
+                    newToken.value += character;
+                    newToken.type = TokenType.Equals;
 
                     //Add one to the position
                     position += 1;
@@ -468,14 +502,16 @@ namespace Crossover
             }
 
             //Update global position to include changes to local position
-            positionInInput += newIdentifierToken.value.Length;
+            positionInInput += newToken.value.Length;
 
-            return newIdentifierToken;
+            return newToken;
         }
 
         Token CheckForParenthesisBracketBrace()
         {
-            Token newIdentifierToken = new Token();
+            Token newToken = new Token();
+
+            newToken.isOnLine = lineIndex;
 
             int position = positionInInput;
 
@@ -489,8 +525,8 @@ namespace Crossover
                 if (character.Equals((char)40) || character.Equals((char)41))
                 {
                     //Character is the value of the new Parenthesis token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.Parenthesis;
+                    newToken.value += character;
+                    newToken.type = TokenType.Parenthesis;
 
                     //Add one to the position
                     position += 1;
@@ -503,8 +539,8 @@ namespace Crossover
                 else if (character.Equals((char)91) || character.Equals((char)93))
                 {
                     //Character is the value of the new Bracket token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.SquareBracket;
+                    newToken.value += character;
+                    newToken.type = TokenType.SquareBracket;
 
                     //Add one to the position
                     position += 1;
@@ -517,8 +553,8 @@ namespace Crossover
                 else if (character.Equals((char)123) || character.Equals((char)125))
                 {
                     //Character is the value of the new Brace token
-                    newIdentifierToken.value += character;
-                    newIdentifierToken.type = TokenType.CurlyBrace;
+                    newToken.value += character;
+                    newToken.type = TokenType.CurlyBrace;
 
                     //Add one to the position
                     position += 1;
@@ -529,9 +565,9 @@ namespace Crossover
             }
 
             //Update global position to include changes to local position
-            positionInInput += newIdentifierToken.value.Length;
+            positionInInput += newToken.value.Length;
 
-            return newIdentifierToken;
+            return newToken;
         }
     }
 
@@ -539,34 +575,39 @@ namespace Crossover
     {
         public TokenType type;
         public string value;
+        public int isOnLine;
 
         public Token()
         {
             //Empty constructor
         }
 
-        public Token(TokenType _type, string _value)
+        public Token(TokenType _type, string _value, int _lineIndex)
         {
             type = _type;
             value = _value;
+            isOnLine = _lineIndex;
         }
 
-        public Token(TokenType _type, bool _value)
+        public Token(TokenType _type, bool _value, int _lineIndex)
         {
             type = _type;
             value = _value.ToString();
+            isOnLine = _lineIndex;
         }
 
-        public Token(TokenType _type, int _value)
+        public Token(TokenType _type, int _value, int _lineIndex)
         {
             type = _type;
             value = _value.ToString();
+            isOnLine = _lineIndex;
         }
 
-        public Token(TokenType _type, float _value)
+        public Token(TokenType _type, float _value, int _lineIndex)
         {
             type = _type;
             value = _value.ToString();
+            isOnLine = _lineIndex;
         }
     }
 
@@ -578,6 +619,8 @@ namespace Crossover
         BoolVariable,       //letter AND true, false
         IntVariable,        //digit, NO decimal
         FloatVariable,      //digit, decimal
+        UseKeyword,         //use
+        ExternalKeyword,
         FunctionDeclaration, //function
         ExclusiveKeyword,   //exclusive
         IfKeyword,          //if
@@ -591,6 +634,7 @@ namespace Crossover
         CurlyBrace,         //{, }
         SquareBracket,      //[, ]
         Comma,              //,
+        Period,             //.
         LineEnding          //;
     }
 }
