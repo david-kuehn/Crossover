@@ -1,0 +1,7 @@
+﻿function DoTing() {
+    var a = 2;
+}
+
+exclusive function DoOtherTing() {
+	var a = 3;
+}

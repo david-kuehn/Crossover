@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using Crossover;
 
@@ -10,7 +11,7 @@ namespace Crossover
         List<Function> usableFunctions = new List<Function>();
 
         //List of externally imported functions
-        List<Function> externalFunctions;
+        List<Function> externalFunctions = new List<Function>();
 
         //Number representing "depth", or what number nested loop we are in right now (e.g. blank program is 0, inside function is 1, inside if loop inside function is 2)
         int currentDepthLevel = 0;
@@ -35,7 +36,8 @@ namespace Crossover
                             CrossoverCompiler.ThrowCompilerError("Variable must be named immediately after it is declared", tokenList[i].isOnLine);
                         else
                         {
-                            if (tokenList[i - 1].type == TokenType.ExclusiveKeyword)
+                            //If the previous token is the 'exclusive' keyword AND this is not the first token
+                            if (i > 0 && tokenList[i - 1].type == TokenType.ExclusiveKeyword)
                                 newVariable.isExclusive = true;
 
                             //If the following token is an identifier, use it as the new variable's name and skip the next iteration
@@ -58,7 +60,7 @@ namespace Crossover
                             CrossoverCompiler.ThrowCompilerError("Function must be named immediately after it is declared", tokenList[i].isOnLine);
                         else
                         {
-                            if (tokenList[i - 1].type == TokenType.ExclusiveKeyword)
+                            if (i > 0 && tokenList[i - 1].type == TokenType.ExclusiveKeyword)
                                 newFunction.scope = AccessLevel.Exclusive;
 
                             //If the following token is an identifier, use it as the new variable's name and skip the next iteration
@@ -72,22 +74,55 @@ namespace Crossover
 
                     //If token is the 'use' keyword
                     case TokenType.UseKeyword:
+                        Token pathOfExternalFile = tokenList[i + 1];
+
                         //If this is being executed inside a function, throw an error
                         if (isInFunction)
                             CrossoverCompiler.ThrowCompilerError("Cannot use 'use' keyword inside of a function", tokenList[i].isOnLine);
-                        
-                        //Get string from next token and read file from path in string
+
+                        if (pathOfExternalFile.type != TokenType.StringVariable)
+                            CrossoverCompiler.ThrowCompilerError("A string with the path of the imported file must follow the 'use' keyword", tokenList[i].isOnLine);
+
+                        Tokenizer externalInputTokenizer = new Tokenizer();
+
+                        //Read file from path, get a list of tokens, filter through the list to find functions, add functions to externalFunctions
+                        FindFunctions(externalInputTokenizer.InputToTokensList(File.ReadAllText(@pathOfExternalFile.value)));
 
                         break;
 
                     //If token is the 'external' keyword
                     case TokenType.ExternalKeyword:
+                        Token externalFunctionToFind = tokenList[i + 2];
+
+                        bool canFindExternalFunction = false;
+
                         //If the following token is not an period, then throw an error
                         if (tokenList[i + 1].type != TokenType.Period)
-                            CrossoverCompiler.ThrowCompilerError("external keyword must be followed by a period", tokenList[i].isOnLine);
-                        
+                            CrossoverCompiler.ThrowCompilerError("'external' keyword must be followed by a period", tokenList[i].isOnLine);
+
+                        //Foreach external function that has been imported from external scripts
+                        foreach (Function func in externalFunctions)
+                        {
+                            //If the token after the period matches any of the external functions
+                            if (externalFunctionToFind.value == func.name)
+                            {
+                                //Do the function that it matches
+                                canFindExternalFunction = true;
+                                RunFunction(func);
+                            }
+                        }
+
+                        //If external function cannot be found
+                        if (!canFindExternalFunction)
+                        {
+                            //Throw error
+                            CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalFunctionToFind.value, tokenList[i].isOnLine);
+                        }
+
+                        i += 2;
+
                         break;
-                    
+
                     //If token is a curly brace
                     case TokenType.CurlyBrace:
                         switch (tokenList[i].value)
@@ -144,7 +179,7 @@ namespace Crossover
                         }
 
                         break;
-                    
+
                     //Default exit
                     default:
                         break;
@@ -155,6 +190,111 @@ namespace Crossover
         public void RunFunction(Function functionToRun)
         {
             ActOnTokens(functionToRun.contents, true);
+        }
+
+        //Use to find functions in external file
+        public void FindFunctions(List<Token> tokensToCheck)
+        {
+            int externalCurrentDepthLevel = 0;
+
+            //For each token in tokensToCheck
+            for (int i = 0; i < tokensToCheck.Count; i++)
+            {
+                //Check TokenType
+                switch (tokensToCheck[i].type)
+                {
+                    //If token is a function declaration ('function')
+                    case TokenType.FunctionDeclaration:
+                        Function newFunction = new Function();
+
+                        //We are now awaiting an opening curly brace
+                        waitingForFunctionStart = true;
+
+                        //If the following token is not an identifier, then throw an error
+                        if (tokensToCheck[i + 1].type != TokenType.Identifier)
+                            CrossoverCompiler.ThrowCompilerError("Function must be named immediately after it is declared", tokensToCheck[i].isOnLine);
+                        else
+                        {
+                            if (i > 0 && tokensToCheck[i - 1].type == TokenType.ExclusiveKeyword)
+                                newFunction.scope = AccessLevel.Exclusive;
+
+                            //If the function isn't exclusive
+                            if (newFunction.scope != AccessLevel.Exclusive)
+                            {
+                                //Use identifier as the new variable's name and skip the next iteration
+                                newFunction.name = tokensToCheck[i + 1].value;
+                                externalFunctions.Add(newFunction);
+                            }
+
+                            //If it is, then break out
+                            else
+                            {
+                                break;
+                            }
+
+                            i += 1;
+                        }
+
+                        break;
+
+                    case TokenType.CurlyBrace:
+                        switch (tokensToCheck[i].value)
+                        {
+                            //If it is an opening brace (e.g. beginning of function)
+                            case "{":
+                                int startingDepthLevel = externalCurrentDepthLevel;
+
+                                //Go deeper by one
+                                externalCurrentDepthLevel += 1;
+
+                                //Function contents have started
+                                waitingForFunctionStart = false;
+                                waitingForFunctionEnd = true;
+
+                                //Go to next token
+                                i += 1;
+
+                                //While the function is still open and has not been closed with a brace yet
+                                while (externalCurrentDepthLevel != startingDepthLevel)
+                                {
+                                    //If the token is an opening brace, add one to the depth level
+                                    if (tokensToCheck[i].value == "{")
+                                        externalCurrentDepthLevel += 1;
+
+                                    //If it's a closing brace, subtract one from the depth level
+                                    else if (tokensToCheck[i].value == "}")
+                                    {
+                                        externalCurrentDepthLevel -= 1;
+
+                                        //If the brace closes the function, break before it is added to the function's contents
+                                        if (externalCurrentDepthLevel == startingDepthLevel)
+                                            break;
+                                    }
+
+                                    //Add token to the most recent function in the external functions array
+                                    externalFunctions[externalFunctions.Count - 1].contents.Add(tokensToCheck[i]);
+
+                                    //Go to next token
+                                    i++;
+                                }
+
+                                break;
+
+                            //If it is a closing brace
+                            case "}":
+                                //Go shallower by one
+                                externalCurrentDepthLevel -= 1;
+
+                                break;
+
+                            default:
+                                break;
+                        }
+
+                    break;
+                }
+            }
+
         }
     }
 }

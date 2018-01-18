@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using Crossover;
 
@@ -18,6 +19,7 @@ namespace Crossover
         //Returns a list of tokens from the input
         public List<Token> InputToTokensList(string _input)
         {
+
             input = _input;
             inputChars = _input.ToCharArray();
 
@@ -87,10 +89,10 @@ namespace Crossover
                 }
 
                 //If 'external' keyword is detected
-                else if (inputChars[positionInInput].Equals('e') && inputChars[positionInInput + 1].Equals('x') && inputChars[positionInInput + 2].Equals('t') && inputChars[positionInInput + 3].Equals('e') && inputChars[positionInInput + 4].Equals('r') && inputChars[positionInInput + 5].Equals('n') && inputChars[positionInInput + 6].Equals('a') && inputChars[positionInInput + 7].Equals('l') && inputChars[positionInInput + 8].Equals('.'))
+                else if (inputChars[positionInInput].Equals('e') && inputChars[positionInInput + 1].Equals('x') && inputChars[positionInInput + 2].Equals('t') && inputChars[positionInInput + 3].Equals('e') && inputChars[positionInInput + 4].Equals('r') && inputChars[positionInInput + 5].Equals('n') && inputChars[positionInInput + 6].Equals('a') && inputChars[positionInInput + 7].Equals('l') && inputChars[positionInInput + 8].Equals((char)46))
                 {
-                    //Add a new Function token
-                    tokensFromInput.Add(new Token(TokenType.FunctionDeclaration, "function", lineIndex));
+                    //Add a new External token
+                    tokensFromInput.Add(new Token(TokenType.ExternalKeyword, "external", lineIndex));
                     positionInInput += 8;
                 }
 
@@ -298,8 +300,7 @@ namespace Crossover
 
             int position = positionInInput;
 
-            //Add first single quote to new token and advance position
-            newStringToken.value += inputChars[position];
+            //Advance position beyond first single quote
             position += 1;
 
             //While current position is less than or equal to the length of the input
@@ -311,9 +312,6 @@ namespace Crossover
                 //If character ends the string
                 if (character.Equals((char)8.217) || character.Equals((char)39))
                 {
-                    //Add character to new token
-                    newStringToken.value += character;
-
                     //Go to next char
                     position += 1;
 
@@ -328,8 +326,8 @@ namespace Crossover
                 position += 1;
             }
 
-            //Update global position to include changes to local position
-            positionInInput += newStringToken.value.Length;
+            //Update global position to include changes to local position + 2 because of quotes
+            positionInInput += (newStringToken.value.Length + 2);
 
             //Return new token of type StringVariable
             newStringToken.type = TokenType.StringVariable;
