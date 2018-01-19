@@ -80,6 +80,20 @@ namespace Crossover
                     positionInInput += 8;
                 }
 
+                //If 'print' keyword is detected
+                else if (inputChars[positionInInput].Equals('p') &&
+#region
+                inputChars[positionInInput + 1].Equals('r') &&
+                inputChars[positionInInput + 2].Equals('i') &&
+                inputChars[positionInInput + 3].Equals('n') &&
+                inputChars[positionInInput + 4].Equals('t') &&
+                inputChars[positionInInput + 5].Equals(' '))
+                {
+                    //Add a new ReturnKeyword token
+                    tokensFromInput.Add(new Token(TokenType.PrintKeyword, "print", lineIndex));
+                    positionInInput += 5;
+                }
+#endregion
                 //If 'use' keyword is detected
                 else if (inputChars[positionInInput].Equals('u') && inputChars[positionInInput + 1].Equals('s') && inputChars[positionInInput + 2].Equals('e') && inputChars[positionInInput + 3].Equals(' '))
                 {
@@ -617,8 +631,9 @@ namespace Crossover
         BoolVariable,       //letter AND true, false
         IntVariable,        //digit, NO decimal
         FloatVariable,      //digit, decimal
+        PrintKeyword,        //print
         UseKeyword,         //use
-        ExternalKeyword,
+        ExternalKeyword,    //external
         FunctionDeclaration, //function
         ExclusiveKeyword,   //exclusive
         IfKeyword,          //if

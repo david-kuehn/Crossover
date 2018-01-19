@@ -1,7 +1,6 @@
-﻿function DoTing() {
-    var a = 2;
-}
+﻿var myVar = 2;
 
-exclusive function DoOtherTing() {
-	var a = 3;
+function DoTing() {
+	print 'From External Function "DoTing()":';
+    print myVar;
 }
