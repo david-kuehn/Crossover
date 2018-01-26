@@ -102,6 +102,14 @@ namespace Crossover
                     positionInInput += 3;
                 }
 
+                //If 'as' keyword is detected
+                else if (inputChars[positionInInput].Equals('a') && inputChars[positionInInput + 1].Equals('s') && inputChars[positionInInput + 2].Equals(' '))
+                {
+                    //Add a new AsKeyword token
+                    tokensFromInput.Add(new Token(TokenType.AsKeyword, "as", lineIndex));
+                    positionInInput += 2;
+                }
+
                 //If 'external' keyword is detected
                 else if (inputChars[positionInInput].Equals('e') && inputChars[positionInInput + 1].Equals('x') && inputChars[positionInInput + 2].Equals('t') && inputChars[positionInInput + 3].Equals('e') && inputChars[positionInInput + 4].Equals('r') && inputChars[positionInInput + 5].Equals('n') && inputChars[positionInInput + 6].Equals('a') && inputChars[positionInInput + 7].Equals('l') && inputChars[positionInInput + 8].Equals((char)46))
                 {
@@ -633,6 +641,7 @@ namespace Crossover
         FloatVariable,      //digit, decimal
         PrintKeyword,        //print
         UseKeyword,         //use
+        AsKeyword,          //as
         ExternalKeyword,    //external
         FunctionDeclaration, //function
         ExclusiveKeyword,   //exclusive

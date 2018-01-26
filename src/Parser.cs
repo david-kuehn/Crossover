@@ -48,10 +48,19 @@ namespace Crossover
                                 if (i > 0 && tokenList[i - 1].type == TokenType.ExclusiveKeyword)
                                     newVariable.isExclusive = true;
 
-                                //If the following token is an identifier, use it as the new variable's name and skip the next iteration
+                                //If the following token is an identifier, use it as the new variable's name
                                 newVariable.name = tokenList[i + 1].value;
+
+                                //Parent script of the variable is the current script's file name
+                                newVariable.parentScript = "this";
+
+                                //Depth level of the variable is the current depth level of the script
                                 newVariable.depthLevel = currentDepthLevel;
+
+                                //This variable is a usable variable that was declared in this script
                                 usableVariables.Add(newVariable);
+
+                                //Skip the next iteration
                                 i += 1;
                             }
                             break;
@@ -129,7 +138,7 @@ namespace Crossover
                             Tokenizer externalInputTokenizer = new Tokenizer();
 
                             //Read file from path, get a list of tokens, filter through the list to find functions, add functions to externalFunctions
-                            FindFunctionsAndVariablesInExternal(externalInputTokenizer.InputToTokensList(File.ReadAllText(@pathOfExternalFile.value)));
+                            FindFunctionsAndVariablesInExternal(externalInputTokenizer.InputToTokensList(File.ReadAllText(@pathOfExternalFile.value)), pathOfExternalFile.value);
 
                             break;
                         }
@@ -140,37 +149,124 @@ namespace Crossover
                         }
 
                         break;
-                    #endregion
+#endregion
+                    //If token is the 'as' keyword
+                    case TokenType.AsKeyword:
+#region
+                        //If this token comes after a 'use' keyword (not directly after)
+                        if (tokenList[i-2].type == TokenType.UseKeyword)
+                        {
+                            //Get the previous token and use it as the filename to check for
+                            Token fileNameToCheckFor = tokenList[i - 1];
+
+                            //Get the next token and use it as the name that will represent the imported module
+                            Token nameToUseAs = tokenList[i + 1];
+
+                            //If this is being executed inside a function, throw an error
+                            if (isInFunction)
+                                CrossoverCompiler.ThrowCompilerError("Cannot use 'as' keyword inside of a function", tokenList[i].isOnLine);
+
+                            //If the next token is not an identifier, throw an error
+                            if (nameToUseAs.type != TokenType.Identifier)
+                                CrossoverCompiler.ThrowCompilerError("An identifier with the desired name to use for the imported module must follow the 'as' keyword", tokenList[i].isOnLine);
+
+                            //Foreach currently registered external variable
+                            foreach (Variable var in externalVariables)
+                            {
+                                //If the current iteration's variable matches the file name that we have to check for
+                                if (var.parentScript == fileNameToCheckFor.value)
+                                {
+                                    //Set the parent script of that variable to the name that we want it to be accessible by
+                                    var.parentScript = nameToUseAs.value;
+                                }
+                            }
+
+                            //Foreach currently registered external function
+                            foreach (Function func in externalFunctions)
+                            {
+                                //If the current iteration's variable matches the file name that we have to check for
+                                if (func.parentScript == fileNameToCheckFor.value)
+                                {
+                                    //Set the parent script of that variable to the name that we want it to be accessible by
+                                    func.parentScript = nameToUseAs.value;
+                                }
+                            }
+
+                            break;
+                        }
+
+                        else
+                        {
+                            CrossoverCompiler.ThrowCompilerError("The 'as' keyword must be used in conjunction with the 'use' keyword", tokenList[i].isOnLine);
+                        }
+
+                        break;
+#endregion
                     //If token is the 'external' keyword
                     case TokenType.ExternalKeyword:
 #region
                         if (!isInExternalScript)
                         {
-                            Token externalFunctionToFind = tokenList[i + 2];
+                            Token nameOfExternalScript = tokenList[i + 2];
 
-                            bool canFindExternalFunction = false;
+                            Token externalVariableOrFunctionToFind = tokenList[i + 4];
 
-                            //If the following token is not an period, then throw an error
-                            if (tokenList[i + 1].type != TokenType.Period)
-                                CrossoverCompiler.ThrowCompilerError("'external' keyword must be followed by a period", tokenList[i].isOnLine);
+                            bool canFindExternalScript = false;
+
+                            bool canFindExternalVariableOrFunction = false;
+
+                            //Syntax check
+                            //If the following tokens are not period, identifier, period, identifier, then throw an error
+                            if (tokenList[i + 1].type != TokenType.Period || tokenList[i + 2].type != TokenType.Identifier && tokenList[i + 3].type != TokenType.Period && tokenList[i + 4].type != TokenType.Identifier)
+                                CrossoverCompiler.ThrowCompilerError("'external' keyword must be followed by a period, then identifier, then another period, then another identifier", tokenList[i].isOnLine);
+
+                            //RELOCATE to equals check
+                            //Foreach external variable that has been imported from external scripts
+                            foreach (Variable var in externalVariables)
+                            {
+                                //If the function's parent script match the one specified in the identifier
+                                if (var.parentScript == nameOfExternalScript.value)
+                                {
+                                    canFindExternalScript = true;
+
+                                    //If the token after the second period matches any of the external functions
+                                    if (externalVariableOrFunctionToFind.value == var.name)
+                                    {
+                                        canFindExternalVariableOrFunction = true;
+                                    }
+                                }
+                            }
 
                             //Foreach external function that has been imported from external scripts
                             foreach (Function func in externalFunctions)
                             {
-                                //If the token after the period matches any of the external functions
-                                if (externalFunctionToFind.value == func.name)
+                                //If the function's parent script match the one specified in the identifier
+                                if (func.parentScript == nameOfExternalScript.value)
                                 {
-                                    //Do the function that it matches
-                                    canFindExternalFunction = true;
-                                    RunFunction(func, true);
+                                    canFindExternalScript = true;
+
+                                    //If the token after the second period matches any of the external functions
+                                    if (externalVariableOrFunctionToFind.value == func.name)
+                                    {
+                                        //Do the function that it matches
+                                        canFindExternalVariableOrFunction = true;
+                                        RunFunction(func, true);
+                                    }
                                 }
                             }
 
-                            //If external function cannot be found
-                            if (!canFindExternalFunction)
+                            //If external script cannot be found
+                            if (!canFindExternalScript)
                             {
                                 //Throw error
-                                CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalFunctionToFind.value, tokenList[i].isOnLine);
+                                CrossoverCompiler.ThrowCompilerError("Could not find external script imported as: " + nameOfExternalScript.value, tokenList[i].isOnLine);
+                            }
+
+                            //If external function cannot be found
+                            if (!canFindExternalVariableOrFunction)
+                            {
+                                //Throw error
+                                CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalVariableOrFunctionToFind.value, tokenList[i].isOnLine);
                             }
 
                             i += 2;
@@ -249,8 +345,8 @@ namespace Crossover
 #region
                         if (!isInExternalScript)
                         {
-                            //If the previous token is an equals AND we are NOT in parameters, if the token 2 iterations back is an identifier
-                            if (tokenList[i-1].type == TokenType.Equals && !inParams)
+                            //If the previous token is an equals AND not the 'use' keyword AND we are NOT in parameters, if the token 2 iterations back is an identifier
+                            if (tokenList[i-1].type == TokenType.Equals && tokenList[i - 1].type != TokenType.UseKeyword && !inParams)
                             {
                                 if (tokenList[i-2].type == TokenType.Identifier)
                                 {
@@ -260,7 +356,7 @@ namespace Crossover
 
                                 else
                                 {
-                                    CrossoverCompiler.ThrowCompilerError("String values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
+                                    CrossoverCompiler.ThrowCompilerError("Variable values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
                                 }
                             }
                             
@@ -282,7 +378,7 @@ namespace Crossover
 
                                 else
                                 {
-                                    CrossoverCompiler.ThrowCompilerError("String values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
+                                    CrossoverCompiler.ThrowCompilerError("Variable values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
                                 }
                             }
                         }
@@ -303,7 +399,7 @@ namespace Crossover
         }
 
         //Use to find functions in external file
-        public void FindFunctionsAndVariablesInExternal(List<Token> tokensToCheck)
+        public void FindFunctionsAndVariablesInExternal(List<Token> tokensToCheck, string fileName)
         {
             int externalCurrentDepthLevel = 0;
 
@@ -330,7 +426,12 @@ namespace Crossover
                             //If the following token is an identifier, use it as the new variable's name and skip the next iteration
                             newVariable.name = tokensToCheck[i + 1].value;
                             newVariable.depthLevel = currentDepthLevel;
+
+                            //Set parent script to the file that the variable comes from
+                            newVariable.parentScript = fileName;
+
                             externalVariables.Add(newVariable);
+
                             i += 1;
                         }
                         break;
@@ -356,6 +457,10 @@ namespace Crossover
                             {
                                 //Use identifier as the new variable's name and skip the next iteration
                                 newFunction.name = tokensToCheck[i + 1].value;
+
+                                //Set parent script to the file that the function comes from
+                                newFunction.parentScript = fileName;
+
                                 externalFunctions.Add(newFunction);
                             }
 
