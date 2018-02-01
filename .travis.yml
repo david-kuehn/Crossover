@@ -1,8 +1,6 @@
 language: csharp
-solution: Crossover.sln
 mono: none
-dotnet: 1.1.5
-install:
- - dotnet restore
+dotnet: 2.0.0
 script:
- - dotnet restore
+  - dotnet restore
+  - dotnet build ./
