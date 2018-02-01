@@ -11,3 +11,9 @@ myInt = 3;
 print myInt;
 
 external.SampleExternal.DoTing();
+
+function DoNewTing () {
+	print 'Hello World';
+}
+
+DoNewTing();

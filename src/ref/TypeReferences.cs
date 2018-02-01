@@ -46,7 +46,18 @@ namespace Crossover
 
     class Parameter
     {
-        public List<Variable> parameterVariables = new List<Variable>();
+        public Variable parameterVariable;
+
+        Parameter(Variable paramVariable)
+        {
+            parameterVariable = paramVariable;
+        }
+    }
+
+    //Use when passing parameters into a function
+    class PassedParameter
+    {
+        public List<Token> contents = new List<Token>();
     }
 
     enum AccessLevel

@@ -7,6 +7,8 @@ namespace Crossover
 {
     class Parser
     {
+        List<Token> scriptTokenList = new List<Token>();
+
         List<Variable> usableVariables = new List<Variable>();
         List<Function> usableFunctions = new List<Function>();
 
@@ -25,6 +27,8 @@ namespace Crossover
 
         public void ActOnTokens(List<Token> tokenList, bool isInFunction, bool isInExternalScript)
         {
+            scriptTokenList = tokenList;
+
             //For each token in tokenList
             for (int i = 0; i < tokenList.Count; i++)
             {
@@ -162,6 +166,9 @@ namespace Crossover
                             //Get the next token and use it as the name that will represent the imported module
                             Token nameToUseAs = tokenList[i + 1];
 
+                            //Skip next iteration
+                            i++;
+
                             //If this is being executed inside a function, throw an error
                             if (isInFunction)
                                 CrossoverCompiler.ThrowCompilerError("Cannot use 'as' keyword inside of a function", tokenList[i].isOnLine);
@@ -269,7 +276,7 @@ namespace Crossover
                                 CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalVariableOrFunctionToFind.value, tokenList[i].isOnLine);
                             }
 
-                            i += 2;
+                            i += 4;
 
                             break;
                         }
@@ -277,6 +284,55 @@ namespace Crossover
                         {
                             CrossoverCompiler.ThrowCompilerError("Cannot access other external scripts from an external script", tokenList[i].isOnLine);
                         }
+                        break;
+                    #endregion
+                    //If token is an identifier
+                    case TokenType.Identifier:
+#region
+
+                        Token currentIdentifier = tokenList[i];
+
+                        bool foundVariableOrFunction = false;
+
+                        //Foreach locally accessible function (external function checks are handled in the 'external' token case
+                        foreach (Function func in usableFunctions)
+                        {
+                            //If the name of the function currently iterated equals the value of the identifier (the current token)
+                            if (func.name == currentIdentifier.value)
+                            {
+                                foundVariableOrFunction = true;
+
+                                //If the function takes in parameters
+                                if (func.parameters.Count > 0)
+                                {
+                                    //Handle the function's parameters, set the current iteration to whatever it is after the parameters are evaluated
+                                    i = HandleParameters(i, func);
+                                }
+
+                                //If the function doesn't take in parameters, run the function
+                                else
+                                {
+                                    RunFunction(func, false);
+                                }
+                            }
+                        }
+
+                        //If no function of the name of the identifier was found
+                        if (!foundVariableOrFunction)
+                        {
+                            //Foreach usable variable
+                            foreach (Variable var in usableVariables)
+                            {
+                                //If the currently iterated variable's name equals the value of the current identifier, we have found a VariableOrFunction
+                                if (var.name == currentIdentifier.value)
+                                    foundVariableOrFunction = true;
+                            }
+                        }
+
+                        //If we haven't found a variable or function with a matching name, throw error
+                        if (!foundVariableOrFunction)
+                            CrossoverCompiler.ThrowCompilerError("Could not find local variable or function with name: " + currentIdentifier.value, tokenList[i].isOnLine);
+
                         break;
 #endregion
                     //If token is a curly brace
@@ -337,7 +393,7 @@ namespace Crossover
 
                         break;
                     #endregion
-                    //If token is a string, bool, int, or float variable
+                    //If token is a string, bool, int, or float variable VALUE, not NAME
                     case TokenType.StringVariable:
                     case TokenType.BoolVariable:
                     case TokenType.IntVariable:
@@ -393,12 +449,127 @@ namespace Crossover
             }
         }
 
+        int HandleParameters(int currentIteration, Function funcToHandle)
+        {
+            List<Token> detectedTokensWithinParentheses = new List<Token>();
+            List<PassedParameter> detectedParametersWithinParentheses = new List<PassedParameter>();
+
+            //Depth level of parentheses within parameters
+            int parenthesisDepthLevel = 0;
+
+            //If the next token is not an opening parenthesis, throw an error
+            if (scriptTokenList[currentIteration + 1].type != TokenType.Parenthesis && scriptTokenList[currentIteration + 1].value.ToCharArray()[0] != '(')
+                CrossoverCompiler.ThrowCompilerError("Function " + funcToHandle.name + " takes in parameters, and none were specified.", scriptTokenList[currentIteration].isOnLine);
+
+            //Go to the token following the opening parenthesis
+            currentIteration += 2;
+
+            //Add one to the depth level because we've just had our opening parenthesis
+            parenthesisDepthLevel += 1;
+
+            //
+            //  GET TOKENS
+            //
+
+            //Loop through all tokens until the original parameter block of parentheses is closed
+            while (parenthesisDepthLevel != 0)
+            {
+                //If the token is an opening parenthesis, add one to the depth level
+                if (scriptTokenList[currentIteration].type == TokenType.Parenthesis && scriptTokenList[currentIteration].value.ToCharArray()[0] != '(')
+                    parenthesisDepthLevel += 1;
+
+                //If the token is a closing parenthesis, subtract one from the depth level
+                else if (scriptTokenList[currentIteration].type == TokenType.Parenthesis && scriptTokenList[currentIteration].value.ToCharArray()[0] != ')' && parenthesisDepthLevel == 1)
+                    parenthesisDepthLevel -= 1;
+
+                //Otherwise, add the token to the list of tokens within the parentheses and move to the next token
+                else
+                {
+                    detectedTokensWithinParentheses.Add(scriptTokenList[currentIteration]);
+                    currentIteration++;
+                }
+            }
+            
+            //
+            //  GET PARAMETERS
+            //
+
+            PassedParameter currentParam = new PassedParameter();
+
+            //Foreach token in all the tokens that were detected within the parentheses of the parameters
+            foreach(Token token in detectedTokensWithinParentheses)
+            {
+                //If the token is a comma
+                if (token.type == TokenType.Comma)
+                {
+                    //Add whatever the value of the parameter was to the detected parameters, reset the current parameter
+                    detectedParametersWithinParentheses.Add(currentParam);
+                    currentParam.contents.Clear();
+                }
+
+                //If the token is anything but a comma
+                else
+                {
+                    //Add it to the contents of the current parameter
+                    currentParam.contents.Add(token);
+                }
+            }
+
+            //If the amount of parameters passed doesn't equal the amount of parameters that the function takes in, throw an error
+            if (detectedParametersWithinParentheses.Count != funcToHandle.parameters.Count)
+                CrossoverCompiler.ThrowCompilerError("Function " + funcToHandle.name + " takes in " + funcToHandle.parameters.Count + " parameters, but only " + detectedParametersWithinParentheses.Count + " were passed when the function was called.", scriptTokenList[currentIteration].isOnLine);
+
+            //
+            //  EVALUATE PARAMETERS
+            //
+
+            //Foreach parameter detected, try to evaluate it
+            for (int i = 0; i < detectedParametersWithinParentheses.Count; i++)
+            {
+                PassedParameter param = detectedParametersWithinParentheses[i];
+
+                //If the parameter contains more than one token, try to evaluate it into a valid value to pass to the function
+                if (param.contents.Count > 1)
+                {
+                    //If cannot evaluate, throw error
+                }
+
+                //If the parameter is only one token
+                else
+                {
+                    //Local variable storing the value of the current parameter
+                    Token paramValue = param.contents[0];
+
+                    //If the type of the current parameter doesn't equal the type of the corresponding parameter's definition, throw an error
+                    if (paramValue.type != funcToHandle.parameters[i].parameterVariable.type)
+                        CrossoverCompiler.ThrowCompilerError(string.Format("Parameter {0} of function {1} is not of type {2}", funcToHandle.parameters[i].parameterVariable.name, funcToHandle.name, funcToHandle.parameters[i].parameterVariable.type), scriptTokenList[currentIteration].isOnLine);
+
+                    //If the Token is an identifier, set the value of the parameter in the function to the value of the variable passed
+                    funcToHandle.parameters[i].parameterVariable = GetVariableByName(paramValue.value, paramValue.isOnLine, false);
+
+                    //If the Token is a RAW VALUE, set the value of the parameter in the function to the raw value passed
+                }
+            }
+
+            //Return the updated iteration number
+            return currentIteration;
+        }
+
+        //Use to evaluate expressions involving operators
+        void TryEvaluate()
+        {
+            //Return value of evaluation if can evaluate
+
+            //Return null if cannot evaluate
+        }
+
+        //Use to execute a function
         public void RunFunction(Function functionToRun, bool functionIsExternal)
         {
             ActOnTokens(functionToRun.contents, true, functionIsExternal);
         }
 
-        //Use to find functions in external file
+        //Use to find functions/variables in external file
         public void FindFunctionsAndVariablesInExternal(List<Token> tokensToCheck, string fileName)
         {
             int externalCurrentDepthLevel = 0;
