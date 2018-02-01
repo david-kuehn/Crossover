@@ -1,8 +1,7 @@
 language: csharp
 dist: trusty
+sudo: required
 mono: none
-dotnet: 1.1.5
-install:
-- dotnet restore
+dotnet: 1.0.1
 script:
-- dotnet build
+  - ./build.sh --quiet verify
