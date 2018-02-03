@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.IO;
 using System.Collections.Generic;
 using Crossover;
@@ -531,7 +532,10 @@ namespace Crossover
                 //If the parameter contains more than one token, try to evaluate it into a valid value to pass to the function
                 if (param.contents.Count > 1)
                 {
-                    //If cannot evaluate, throw error
+                    //Try to evaluate the tokens into a single value
+                    TryEvaluate(param.contents);
+
+                    //PASS THAT VALUE TO THE FUNCTION
                 }
 
                 //If the parameter is only one token
@@ -556,11 +560,102 @@ namespace Crossover
         }
 
         //Use to evaluate expressions involving operators
-        void TryEvaluate()
+        Variable TryEvaluate(List<Token> tokensToEvaluate)
         {
-            //Return value of evaluation if can evaluate
+            Variable varToReturn = new Variable();
 
+            Token firstToken = new Token();
+            Token operatorToUse = new Token();
+
+            DataTable dtTool = new DataTable();
+
+            //For every token in the tokens that need to be evaluated
+            for (int i = 0; i < tokensToEvaluate.Count; i++)
+            {
+                Token currentToken = tokensToEvaluate[i];
+
+                //Error check
+                //If the token is NOT of an operable type, throw an error
+                if (currentToken.type != TokenType.IntVariable || currentToken.type != TokenType.FloatVariable || currentToken.type != TokenType.StringVariable || currentToken.type != TokenType.MathematicalOperator)
+                    CrossoverCompiler.ThrowCompilerError("Cannot operate on this data type.", currentToken.isOnLine);
+                if (currentToken.type == TokenType.MathematicalOperator)
+                    if (i == 0)
+                        CrossoverCompiler.ThrowCompilerError("The first value in an expression must be an operable data type, not an operator.", currentToken.isOnLine);
+
+
+                //If it's the first token that we need to evaluate, get its type
+                if (i == 0)
+                    firstToken.type = currentToken.type;
+
+                //If the token is an operator, set it as the operator to use
+                else if (currentToken.type == TokenType.MathematicalOperator)
+                    operatorToUse.value = currentToken.value;
+
+                //If it's not the first token and not an operator
+                else
+                {
+                    //If the tokens are valid to operate on
+                    if (CheckOperable(firstToken, currentToken))
+                    {
+                        //Switch through the possible types of the first token
+                        switch (firstToken.type)
+                        {
+                            //If the first token is an int or a float
+                            case TokenType.IntVariable:
+                            case TokenType.FloatVariable:
+                                //Compute result of expression
+                                varToReturn.value = dtTool.Compute(firstToken.value + operatorToUse.value + currentToken.value, "").ToString();
+
+                                break;
+
+                            case TokenType.StringVariable:
+                                //If the operater that we're going to use is not a plus, throw an error
+                                if (operatorToUse.value != '+'.ToString())
+                                    CrossoverCompiler.ThrowCompilerError("Strings can only be added to.", currentToken.isOnLine);
+
+                                varToReturn.value = firstToken.value + currentToken.value;
+
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+
+                    //If the tokens are invalid to operate on, throw an error
+                    else
+                        CrossoverCompiler.ThrowCompilerError(string.Format("Cannot operate on types of {0} and {1}.", firstToken.type.ToString(), currentToken.type.ToString()), currentToken.isOnLine);
+                }
+            }
+
+            //Return value of evaluation if can evaluate
             //Return null if cannot evaluate
+            return varToReturn;
+        }
+
+        //Checks if two tokens can be operated on
+        bool CheckOperable(Token firstToken, Token secondToken)
+        {
+            //Error check
+            //If either of the tokens are bools
+            if (firstToken.type == TokenType.BoolVariable || secondToken.type == TokenType.BoolVariable)
+                CrossoverCompiler.ThrowCompilerError("Cannot operate on boolean values.", firstToken.isOnLine);
+
+            //If the tokens are the same type, return true because they can be operated on
+            if (firstToken.type == secondToken.type)
+                return true;
+
+            //If the first token is an int and the second one is a float, return true because they can be operated on
+            else if (firstToken.type == TokenType.IntVariable && secondToken.type == TokenType.FloatVariable)
+                return true;
+
+            //If the first token is a float and the second one is an int, return true because they can be operated on
+            else if (firstToken.type == TokenType.FloatVariable && secondToken.type == TokenType.IntVariable)
+                return true;
+
+            //If none of these are triggered, return false
+            else
+                return false;
         }
 
         //Use to execute a function
