@@ -48,9 +48,9 @@ namespace Crossover
     {
         public Variable parameterVariable;
 
-        Parameter(Variable paramVariable)
+        public Parameter (Variable _paramVariable)
         {
-            parameterVariable = paramVariable;
+            parameterVariable = _paramVariable;
         }
     }
 

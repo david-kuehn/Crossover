@@ -86,16 +86,28 @@ namespace Crossover
                             //If the following token is not an identifier, then throw an error
                             if (tokenList[i + 1].type != TokenType.Identifier)
                                 CrossoverCompiler.ThrowCompilerError("Function must be named immediately after it is declared", tokenList[i].isOnLine);
+                            //If the token 2 ahead is not an opening parenthesis, throw an error
+                            else if (tokenList[i + 2].type != TokenType.Parenthesis && tokenList[i+2].value.ToCharArray()[0] != '(')
+                                CrossoverCompiler.ThrowCompilerError("Parameters must be specified with a function declaration.", tokenList[i].isOnLine);
+
+
+                            //If the following token is an identifier and has an opening parenthesis
                             else
                             {
+                                //If this is not the first token of the script, and if the previous token is an 'exclusive' keyword
                                 if (i > 0 && tokenList[i - 1].type == TokenType.ExclusiveKeyword)
                                     newFunction.scope = AccessLevel.Exclusive;
 
-                                //If the following token is an identifier, use it as the new variable's name and skip the next iteration
+                                //Use the following identifier as the new variable's name
                                 newFunction.name = tokenList[i + 1].value;
                                 usableFunctions.Add(newFunction);
 
-                                i += 1;
+                                //Skip the next iteration (the identifier that we just handled) and advance to the opening parenthesis
+                                i += 2;
+
+                                //Handle defined parameters ('i' should be the iteration containing the open parenthesis)
+                                //Set the iteration to whatever it is after the parameters are handled
+                                i = HandleDefinedParameters(i, newFunction);
                             }
 
                             break;
@@ -307,7 +319,7 @@ namespace Crossover
                                 if (func.parameters.Count > 0)
                                 {
                                     //Handle the function's parameters, set the current iteration to whatever it is after the parameters are evaluated
-                                    i = HandleParameters(i, func);
+                                    i = HandlePassedParameters(i, func);
                                 }
 
                                 //If the function doesn't take in parameters, run the function
@@ -318,7 +330,7 @@ namespace Crossover
                             }
                         }
 
-                        //If no function of the name of the identifier was found
+                        //If no variable or function of the name of the identifier was found
                         if (!foundVariableOrFunction)
                         {
                             //Foreach usable variable
@@ -400,19 +412,24 @@ namespace Crossover
                     case TokenType.IntVariable:
                     case TokenType.FloatVariable:
 #region
+
+                        //If this is not in an external script
                         if (!isInExternalScript)
                         {
                             //If the previous token is an equals AND not the 'use' keyword AND we are NOT in parameters, if the token 2 iterations back is an identifier
                             if (tokenList[i-1].type == TokenType.Equals && tokenList[i - 1].type != TokenType.UseKeyword && !inParams)
                             {
+                                //If the token 2 back is an identifier
                                 if (tokenList[i-2].type == TokenType.Identifier)
                                 {
                                     //Get the variable with the identifier's name, and set its value equal to this token's value
                                     GetVariableByName(tokenList[i - 2].value, tokenList[i - 2].isOnLine, false).value = tokenList[i].value;
                                 }
 
+                                //If the token 2 back is NOT an identifier
                                 else
                                 {
+                                    //Throw an error
                                     CrossoverCompiler.ThrowCompilerError("Variable values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
                                 }
                             }
@@ -450,7 +467,105 @@ namespace Crossover
             }
         }
 
-        int HandleParameters(int currentIteration, Function funcToHandle)
+        //Handles parameters when they are specified in a function's definition
+        int HandleDefinedParameters(int currentIteration, Function funcToHandle)
+        {
+            List<Token> detectedTokensWithinParentheses = new List<Token>();
+            List<Parameter> detectedParametersWithinParentheses = new List<Parameter>();
+
+            //Depth level of parentheses within parameters
+            int parenthesisDepthLevel = 0;
+
+            //Go to the token following the opening parenthesis
+            currentIteration += 1;
+
+            //Add one to the depth level because we've just had our opening parenthesis
+            parenthesisDepthLevel += 1;
+
+            //
+            //  GET TOKENS
+            //
+
+            //Loop through all tokens until the original parameter block of parentheses is closed
+            while (parenthesisDepthLevel != 0)
+            {
+                //If the token is an opening parenthesis, add one to the depth level
+                if (scriptTokenList[currentIteration].type == TokenType.Parenthesis && scriptTokenList[currentIteration].value.ToCharArray()[0] != '(')
+                    parenthesisDepthLevel += 1;
+
+                //If the token is a closing parenthesis, subtract one from the depth level
+                else if (scriptTokenList[currentIteration].type == TokenType.Parenthesis && scriptTokenList[currentIteration].value.ToCharArray()[0] != ')' && parenthesisDepthLevel == 1)
+                    parenthesisDepthLevel -= 1;
+
+                //Otherwise, add the token to the list of tokens within the parentheses and move to the next token
+                else
+                {
+                    detectedTokensWithinParentheses.Add(scriptTokenList[currentIteration]);
+                    currentIteration++;
+                }
+            }
+
+            //
+            //  INITIALIZE PARAMETERS
+            //
+
+            //Index used to determine where we are in param definition ('var' = 1, identifier = 2, comma = 3)
+            int parameterPatternIndex = 1;
+
+            //Foreach token in all the tokens that were detected within the parentheses of the parameters
+            foreach (Token token in detectedTokensWithinParentheses)
+            {
+                Variable paramVar = new Variable();
+
+                //If we are on the first index and the token is a variable declaration (correct)
+                if (parameterPatternIndex == 1 && token.type == TokenType.VariableDeclaration)
+                {
+                    //Set this parameter's variable's depth level to 1 (it's only accessible within function)
+                    paramVar.depthLevel = 1;
+
+                    //Go to the next index
+                    parameterPatternIndex++;
+                }
+
+                //If we are on the first index and the token is NOT a variable declaration (error)
+                else if (parameterPatternIndex == 1 && token.type != TokenType.VariableDeclaration)
+                    CrossoverCompiler.ThrowCompilerError("Parameters must be initialized with a 'var' keyword, followed by an identifier, when being defined.", token.isOnLine);
+
+                //If we are on the second index and the token is an identifier (correct)
+                else if (parameterPatternIndex == 2 && token.type == TokenType.Identifier)
+                {
+                    //Set the name of parameter to the identifier
+                    paramVar.name = token.value;
+
+                    //Go to the next token
+                    parameterPatternIndex++;
+                }
+
+                //If we are on the second index and the token is NOT an identifier (error)
+                else if (parameterPatternIndex == 2 && token.type != TokenType.VariableDeclaration)
+                    CrossoverCompiler.ThrowCompilerError("Parameters must be initialized with a 'var' keyword, followed by an identifier, when being defined.", token.isOnLine);
+
+                //If we are on the third index and the token is a comma (correct)
+                else if (parameterPatternIndex == 3 && token.type == TokenType.Comma)
+                {
+                    //Add the parameter to the function's parameters
+                    funcToHandle.parameters.Add(new Parameter(paramVar));
+
+                    //Reset the pattern index so that we can look for the next parameter
+                    parameterPatternIndex = 1;
+                }
+
+                //If we are on the second index and the token is NOT an identifier (error)
+                else if (parameterPatternIndex == 3 && token.type != TokenType.Comma)
+                    CrossoverCompiler.ThrowCompilerError("Parameters must be initialized with a 'var' keyword, followed by an identifier, with parameters being separated by commas when being defined.", token.isOnLine);
+            }
+
+            //Return the updated iteration number
+            return currentIteration;
+        }
+
+        //Handles parameters when they are passed into a function call
+        int HandlePassedParameters(int currentIteration, Function funcToHandle)
         {
             List<Token> detectedTokensWithinParentheses = new List<Token>();
             List<PassedParameter> detectedParametersWithinParentheses = new List<PassedParameter>();
@@ -525,6 +640,7 @@ namespace Crossover
             //
 
             //Foreach parameter detected, try to evaluate it
+            //Should work because there is an error catch if the detected parameters != the function's specified parameters
             for (int i = 0; i < detectedParametersWithinParentheses.Count; i++)
             {
                 PassedParameter param = detectedParametersWithinParentheses[i];
@@ -532,10 +648,19 @@ namespace Crossover
                 //If the parameter contains more than one token, try to evaluate it into a valid value to pass to the function
                 if (param.contents.Count > 1)
                 {
-                    //Try to evaluate the tokens into a single value
-                    TryEvaluate(param.contents);
+                    //Try to evaluate the contents of the parameter into a single value and store it in a Variable
+                    Variable evaluatedVariable = TryEvaluate(param.contents);
 
-                    //PASS THAT VALUE TO THE FUNCTION
+                    //If the parameter's contents could be evaluated into a single value
+                    if (evaluatedVariable != null)
+                    {
+                        //Pass the value of the TryEvaluate() to the function
+                        funcToHandle.parameters[i].parameterVariable.value = evaluatedVariable.value;
+                    }
+
+                    //If the evaluation failed
+                    else
+                        CrossoverCompiler.ThrowCompilerError("Could not evaluate contents of parameter.", scriptTokenList[currentIteration].isOnLine);
                 }
 
                 //If the parameter is only one token
@@ -549,9 +674,12 @@ namespace Crossover
                         CrossoverCompiler.ThrowCompilerError(string.Format("Parameter {0} of function {1} is not of type {2}", funcToHandle.parameters[i].parameterVariable.name, funcToHandle.name, funcToHandle.parameters[i].parameterVariable.type), scriptTokenList[currentIteration].isOnLine);
 
                     //If the Token is an identifier, set the value of the parameter in the function to the value of the variable passed
-                    funcToHandle.parameters[i].parameterVariable = GetVariableByName(paramValue.value, paramValue.isOnLine, false);
+                    if (paramValue.type == TokenType.Identifier)
+                        funcToHandle.parameters[i].parameterVariable = GetVariableByName(paramValue.value, paramValue.isOnLine, false);
 
-                    //If the Token is a RAW VALUE, set the value of the parameter in the function to the raw value passed
+                    //If the Token is a RAW VALUE, set the value of the parameter in the function to the raw value passed in the parameter
+                    if (paramValue.type == TokenType.IntVariable || paramValue.type == TokenType.FloatVariable || paramValue.type == TokenType.BoolVariable || paramValue.type == TokenType.StringVariable)
+                        funcToHandle.parameters[i].parameterVariable.value = paramValue.value;
                 }
             }
 
@@ -562,7 +690,7 @@ namespace Crossover
         //Use to evaluate expressions involving operators
         Variable TryEvaluate(List<Token> tokensToEvaluate)
         {
-            Variable varToReturn = new Variable();
+            Variable varToReturn = null;
 
             Token firstToken = new Token();
             Token operatorToUse = new Token();
