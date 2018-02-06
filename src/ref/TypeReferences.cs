@@ -58,6 +58,13 @@ namespace Crossover
     class PassedParameter
     {
         public List<Token> contents = new List<Token>();
+
+        public PassedParameter() { }
+
+        public PassedParameter(List<Token> _contents)
+        {
+            contents = _contents;
+        }
     }
 
     enum AccessLevel

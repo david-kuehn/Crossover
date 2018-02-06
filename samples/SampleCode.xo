@@ -10,10 +10,10 @@ myInt = 3;
 
 print myInt;
 
-external.SampleExternal.DoTing();
+external.SampleExternal.DoTing(1, 2);
 
-function DoNewTing () {
+function DoNewTing(var myTing, var myFifteen) {
 	print 'Hello World';
 }
 
-DoNewTing();
+DoNewTing('yes' + 'no', 15);
