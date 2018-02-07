@@ -272,8 +272,11 @@ namespace Crossover
                                         //We've found an external function
                                         canFindExternalVariableOrFunction = true;
 
+                                        //Advance to the iteration containing the name of the function to call
+                                        i += 4;
+
                                         //Handle the function's parameters, set the current iteration to whatever it is after the parameters are evaluated
-                                        i = HandlePassedParameters(i + 4, func);
+                                        i = HandlePassedParameters(i, func);
 
                                         //Run the function after its parameters have been handled
                                         RunFunction(func, true);
@@ -295,8 +298,6 @@ namespace Crossover
                                 CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalVariableOrFunctionToFind.value, tokenList[i].isOnLine);
                             }
 
-                            i += 4;
-
                             break;
                         }
                         else
@@ -308,7 +309,6 @@ namespace Crossover
                     //If token is an identifier
                     case TokenType.Identifier:
 #region
-
                         Token currentIdentifier = tokenList[i];
 
                         bool foundVariableOrFunction = false;
@@ -687,8 +687,6 @@ namespace Crossover
                     }
                 }
             }
-
-            Console.WriteLine(detectedParametersWithinParentheses.Count.ToString() + " " + funcToHandle.parameters.Count.ToString());
 
             //If the amount of parameters passed doesn't equal the amount of parameters that the function takes in, throw an error
             if (detectedParametersWithinParentheses.Count != funcToHandle.parameters.Count)
