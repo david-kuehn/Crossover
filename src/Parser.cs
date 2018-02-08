@@ -907,9 +907,9 @@ namespace Crossover
                         CrossoverCompiler.ThrowCompilerError("The first value in an expression must be an operable data type, not an operator.", currentToken.isOnLine);
 
 
-                //If it's the first token that we need to evaluate, get its type
+                //If it's the first token that we need to evaluate, set it as the firstToken
                 if (i == 0)
-                    firstToken.type = currentToken.type;
+                    firstToken = currentToken;
 
                 //If the token is an operator, set it as the operator to use
                 else if (currentToken.type == TokenType.MathematicalOperator)
