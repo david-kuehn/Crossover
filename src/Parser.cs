@@ -26,8 +26,23 @@ namespace Crossover
         //Make true if parentheses are detected (which signal the start of parameters)
         bool inParams = false;
 
-        public void ActOnTokens(List<Token> tokenList, bool isInFunction, bool isInExternalScript)
+        //Indicates whether or not we are currently parsing through a function
+        bool isCurrentlyExecutingFunction = false;
+
+        //If a function is being executed, this will hold that function
+        Function functionBeingExecutedByParser = new Function();
+
+        public void ActOnTokens(List<Token> tokenList, bool isInFunction, Function funcBeingExecuted, bool isInExternalScript)
         {
+            //If this is a function, set the script's variable to true and give it the function, if not, set it to false 
+            if (isInFunction)
+            {
+                isCurrentlyExecutingFunction = true;
+                functionBeingExecutedByParser = funcBeingExecuted;
+            }
+            else
+                isCurrentlyExecutingFunction = false;
+
             if (!isInFunction && !isInExternalScript)
                 scriptTokenList = tokenList;
 
@@ -132,8 +147,28 @@ namespace Crossover
                         //Else if it's an identifier, check if it matches any variable
                         else if (followingToken.type == TokenType.Identifier)
                         {
-                            //Write the value of the variable to the console, skip the next iteration
-                            Console.WriteLine(GetVariableByName(followingToken.value, followingToken.isOnLine, isInExternalScript).value);
+                            //If we are in a function (we need to look for parameters)
+                            if (isInFunction)
+                            {
+                                //Loop through this function's parameters
+                                foreach (Parameter param in funcBeingExecuted.parameters)
+                                {
+                                    //If the parameter's variable matches the name of the variable we are looking for
+                                    if (param.parameterVariable.name == tokenList[i + 1].value)
+                                    {
+                                        //Write the value of the parameter to the console
+                                        Console.WriteLine(param.parameterVariable.value);
+                                    }
+                                }
+                            }
+
+                            else
+                            {
+                                //Write the value of the variable to the console
+                                Console.WriteLine(GetVariableByName(followingToken.value, followingToken.isOnLine, isInExternalScript).value);
+                            }
+
+                            //Skip the next iteration
                             i += 1;
                         }
 
@@ -313,8 +348,37 @@ namespace Crossover
 
                         bool foundVariableOrFunction = false;
 
-                        //Foreach locally accessible function (external function checks are handled in the 'external' token case
+                        //If we are executing a function right now (we will check for parameters)
+                        if (isInFunction)
+                        {
+                            //If we haven't already found a variable or function of the name of the identifier was found (we will look for parameters)
+                            if (!foundVariableOrFunction)
+                            {
+                                //Foreach parameter from the function
+                                foreach (Parameter param in funcBeingExecuted.parameters)
+                                {
+                                    //If the currently iterated variable's name equals the value of the current identifier AND its depth level is less than or equal to the current depth level
+                                    if (param.parameterVariable.name == currentIdentifier.value && param.parameterVariable.depthLevel <= currentDepthLevel)
+                                    {
+                                        //We've found the parameter we're looking for
+                                        foundVariableOrFunction = true;
+                                    }
 
+                                    //If the name of the variable matches, but it isn't accessible at the current depth level
+                                    else if (param.parameterVariable.name == currentIdentifier.value && param.parameterVariable.depthLevel > currentDepthLevel)
+                                    {
+                                        //Throw an error
+                                        CrossoverCompiler.ThrowCompilerError(param.parameterVariable.name + " is not accessible in the current scope", currentIdentifier.isOnLine);
+                                    }
+                                }
+                            }
+
+                            //If we haven't found a variable or function with a matching name, throw error
+                            if (!foundVariableOrFunction)
+                                CrossoverCompiler.ThrowCompilerError("Could not find variable, function, or parameter with name: " + currentIdentifier.value, tokenList[i].isOnLine);
+                        }
+
+                        //Foreach locally accessible function (external function checks are handled in the 'external' token case)
                         foreach (Function func in usableFunctions)
                         {
                             //If the name of the function currently iterated equals the value of the identifier (the current token)
@@ -330,15 +394,25 @@ namespace Crossover
                             }
                         }
 
-                        //If no variable or function of the name of the identifier was found
+                        //If no FUNCTION of the name of the identifier was found (we will look for variables)
                         if (!foundVariableOrFunction)
                         {
                             //Foreach usable variable
                             foreach (Variable var in usableVariables)
                             {
-                                //If the currently iterated variable's name equals the value of the current identifier, we have found a VariableOrFunction
-                                if (var.name == currentIdentifier.value)
+                                //If the currently iterated variable's name equals the value of the current identifier AND its depth level matches the current depth level
+                                if (var.name == currentIdentifier.value && var.depthLevel == currentDepthLevel)
+                                {
+                                    //We've found the variable we're looking for
                                     foundVariableOrFunction = true;
+                                }
+
+                                //If the name of the variable matches, but it isn't accessible at the current depth level
+                                else if (var.name == currentIdentifier.value && var.depthLevel != currentDepthLevel)
+                                {
+                                    //Throw an error
+                                    CrossoverCompiler.ThrowCompilerError(var.name + " is not accessible in the current scope", currentIdentifier.isOnLine);
+                                }
                             }
                         }
 
@@ -422,12 +496,34 @@ namespace Crossover
                                 //If the token 2 back is an identifier
                                 if (tokenList[i-2].type == TokenType.Identifier)
                                 {
-                                    //Get the variable with the identifier's name
-                                    Variable theVar = GetVariableByName(tokenList[i - 2].value, tokenList[i - 2].isOnLine, false);
+                                    Variable theVar = new Variable();
 
-                                    //Set the variable's type and value equal to this token's type and value
-                                    theVar.type = tokenList[i].type;
-                                    theVar.value = tokenList[i].value;
+                                    //If we are in a function (we need to look for parameters as well)
+                                    if (isInFunction)
+                                    {
+                                        //Loop through this function's parameters
+                                        foreach (Parameter param in funcBeingExecuted.parameters)
+                                        {
+                                            //If the parameter's variable matches the name of the variable we are looking for
+                                            if (param.parameterVariable.name == tokenList[i - 2].value)
+                                            {
+                                                //Set the parameter's variable's type and value equal to this token's type and value
+                                                theVar.type = tokenList[i].type;
+                                                theVar.value = tokenList[i].value;
+                                            }
+                                        }
+                                    }
+
+                                    //If we are not in a function
+                                    else
+                                    {
+                                        //Get the variable with the identifier's name
+                                        theVar = GetVariableByName(tokenList[i - 2].value, tokenList[i - 2].isOnLine, false);
+
+                                        //Set the variable's type and value equal to this token's type and value
+                                        theVar.type = tokenList[i].type;
+                                        theVar.value = tokenList[i].value;
+                                    }
                                 }
 
                                 //If the token 2 back is NOT an identifier
@@ -442,6 +538,7 @@ namespace Crossover
 
                             break;
                         }
+
                         //If is in external script
                         else
                         {
@@ -579,12 +676,11 @@ namespace Crossover
                 //If we are on the third index and the token is NOT an comma (error)
                 else if (parameterPatternIndex == 3 && token.type != TokenType.Comma)
                     CrossoverCompiler.ThrowCompilerError("Parameters must be initialized with a 'var' keyword, followed by an identifier, with parameters being separated by commas when being defined.", token.isOnLine);
-
             }
 
 
-            //Return the updated iteration number
-            return currentIteration;
+            //Return the updated iteration number - 1 to restart on the opening curly brace
+            return currentIteration - 1;
         }
 
         //Handles parameters when they are passed into a function call
@@ -697,6 +793,7 @@ namespace Crossover
             //  EVALUATE PARAMETERS
             //
 
+
             //Foreach parameter detected, try to evaluate it
             //Should work because there is an error catch if the detected parameters != the function's specified parameters
             for (int i = 0; i < detectedParametersWithinParentheses.Count; i++)
@@ -712,12 +809,36 @@ namespace Crossover
                         //If the token is an identifier, get the variable of its name and pass that to the contents
                         if (token.type == TokenType.Identifier)
                         {
-                            //Get the variable
-                            Variable theVar = GetVariableByName(token.value, token.isOnLine, false);
+                            Variable theVar = new Variable();
 
-                            //Set the token's type and value to those of the variable that we just got
-                            token.type = theVar.type;
-                            token.value = theVar.value;
+                            //Handles passes of parameters from a function if this function is being called from inside another function
+
+                            //If we are in a function (we need to look for parameters as well)
+                            if (isCurrentlyExecutingFunction)
+                            {
+                                //Loop through this function's parameters
+                                foreach (Parameter functionsParameter in functionBeingExecutedByParser.parameters)
+                                {
+                                    //If the parameter's variable matches the name of the variable we are looking for
+                                    if (functionsParameter.parameterVariable.name == scriptTokenList[i - 2].value)
+                                    {
+                                        //Set the parameter's variable's type and value equal to this token's type and value
+                                        theVar.type = scriptTokenList[i].type;
+                                        theVar.value = scriptTokenList[i].value;
+                                    }
+                                }
+                            }
+
+                            //If we are not in a function
+                            else
+                            {
+                                //Get the variable with the identifier's name
+                                theVar = GetVariableByName(scriptTokenList[i - 2].value, scriptTokenList[i - 2].isOnLine, false);
+
+                                //Set the variable's type and value equal to this token's type and value
+                                theVar.type = scriptTokenList[i].type;
+                                theVar.value = scriptTokenList[i].value;
+                            }
                         }
                         
                         //TODO: Check for external variable being passed
@@ -864,7 +985,7 @@ namespace Crossover
         //Use to execute a function
         public void RunFunction(Function functionToRun, bool functionIsExternal)
         {
-            ActOnTokens(functionToRun.contents, true, functionIsExternal);
+            ActOnTokens(functionToRun.contents, true, functionToRun, functionIsExternal);
         }
 
         //Use to find functions/variables in external file

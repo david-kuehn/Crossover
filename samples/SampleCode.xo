@@ -14,6 +14,13 @@ external.SampleExternal.DoTing(1, 2);
 
 function DoNewTing(var myTing, var myFifteen) {
 	print 'Hello World';
+	print myFifteen;
 }
 
 DoNewTing('yes' + 'no', 15);
+
+function Nuevo() {
+	print 'No Parameters Needed';
+}
+
+Nuevo();
