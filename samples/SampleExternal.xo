@@ -1,6 +1,6 @@
 ﻿var myVar = 2;
 
 function DoTing(var yah, var nah) {
-	print 'From External Function "DoTing()":';
     print myVar;
+	print 'From External Function "DoTing()":';
 }

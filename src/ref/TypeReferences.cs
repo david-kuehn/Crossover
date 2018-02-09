@@ -42,6 +42,9 @@ namespace Crossover
 
         //Contents (in token form) of this function
         public List<Token> contents = new List<Token>();
+
+        //What this function returns
+        public List<Token> returnValue = new List<Token>();
     }
 
     class Parameter

@@ -147,6 +147,8 @@ namespace Crossover
                         //Else if it's an identifier, check if it matches any variable
                         else if (followingToken.type == TokenType.Identifier)
                         {
+                            bool havePrinted = false;
+
                             //If we are in a function (we need to look for parameters)
                             if (isInFunction)
                             {
@@ -158,11 +160,13 @@ namespace Crossover
                                     {
                                         //Write the value of the parameter to the console
                                         Console.WriteLine(param.parameterVariable.value);
+                                        havePrinted = true;
                                     }
                                 }
                             }
 
-                            else
+                            //If we are in a function and we haven't printed yet (we didn't find any parameters)
+                            if (!havePrinted)
                             {
                                 //Write the value of the variable to the console
                                 Console.WriteLine(GetVariableByName(followingToken.value, followingToken.isOnLine, isInExternalScript).value);
@@ -1060,6 +1064,7 @@ namespace Crossover
                                 //Handle defined parameters ('i' should be the iteration containing the open parenthesis)
                                 //Set the iteration to whatever it is after the parameters are handled
                                 i = HandleDefinedParameters(i, newFunction, tokensToCheck);
+                                i -= 1;
                             }
 
                             //If it is, then break out
