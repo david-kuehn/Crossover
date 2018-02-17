@@ -40,9 +40,11 @@ namespace Crossover
                 isCurrentlyExecutingFunction = true;
                 functionBeingExecutedByParser = funcBeingExecuted;
             }
+
             else
                 isCurrentlyExecutingFunction = false;
 
+            //If we are in the main script actually being compiled, set the global script token list
             if (!isInFunction && !isInExternalScript)
                 scriptTokenList = tokenList;
 
@@ -176,6 +178,52 @@ namespace Crossover
                             i += 1;
                         }
 
+                        //Else if we are passed an external declaration
+                        if (followingToken.type == TokenType.ExternalKeyword)
+                        {
+                            Variable varToPrint = new Variable();
+
+                            Token nameOfExternalScript = tokenList[i + 3];
+                            Token externalVariableToFind = tokenList[i + 5];
+                            bool canFindExternalScript = false;
+                            bool canFindExternalVariable = false;
+
+                            foreach (Variable var in externalVariables)
+                            {
+                                //If the function's parent script match the one specified in the identifier
+                                if (var.parentScript == nameOfExternalScript.value)
+                                {
+                                    canFindExternalScript = true;
+
+                                    //If the token after the second period matches any of the external functions
+                                    if (externalVariableToFind.value == var.name && !var.isExclusive)
+                                    {
+                                        //Set the variable that we will print to the variable that we just found
+                                        canFindExternalVariable = true;
+                                        varToPrint = var;
+                                    }
+                                }
+                            }
+
+                            //If the correct variable has been found
+                            if (canFindExternalVariable)
+                            {
+                                //Print its value
+                                Console.WriteLine(varToPrint.value);
+                            }
+
+                            //If the external script with that name could not be found, throw an error
+                            if (!canFindExternalScript)
+                                CrossoverCompiler.ThrowCompilerError("Could not find external script imported as: " + nameOfExternalScript.value, tokenList[i].isOnLine);
+
+                            //If the external variable with that name could not be found, throw an error
+                            if (!canFindExternalVariable)
+                                CrossoverCompiler.ThrowCompilerError("Could not find external variable named: " + externalVariableToFind.value + " ... is the variable exclusive?", tokenList[i].isOnLine);
+
+                            //Advance past this print's token contents
+                            i += 5;
+                        }
+
                         break;
 #endregion
                     //If token is the 'use' keyword
@@ -305,8 +353,8 @@ namespace Crossover
                                 {
                                     canFindExternalScript = true;
 
-                                    //If the token after the second period matches any of the external functions
-                                    if (externalVariableOrFunctionToFind.value == func.name)
+                                    //If the token after the second period matches any of the external functions AND it's a public function
+                                    if (externalVariableOrFunctionToFind.value == func.name && func.scope == AccessLevel.Public)
                                     {
                                         //We've found an external function
                                         canFindExternalVariableOrFunction = true;
@@ -334,7 +382,7 @@ namespace Crossover
                             if (!canFindExternalVariableOrFunction)
                             {
                                 //Throw error
-                                CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalVariableOrFunctionToFind.value, tokenList[i].isOnLine);
+                                CrossoverCompiler.ThrowCompilerError("Could not find external function with the name: " + externalVariableOrFunctionToFind.value + " ... is the function exclusive?", tokenList[i].isOnLine);
                             }
 
                             break;
@@ -344,7 +392,7 @@ namespace Crossover
                             CrossoverCompiler.ThrowCompilerError("Cannot access other external scripts from an external script", tokenList[i].isOnLine);
                         }
                         break;
-                    #endregion
+#endregion
                     //If token is an identifier
                     case TokenType.Identifier:
 #region
@@ -1024,6 +1072,7 @@ namespace Crossover
                             //Set parent script to the file that the variable comes from
                             newVariable.parentScript = fileName;
 
+                            //Add it to the accessible external variables
                             externalVariables.Add(newVariable);
 
                             i += 1;
@@ -1046,32 +1095,22 @@ namespace Crossover
                             if (i > 0 && tokensToCheck[i - 1].type == TokenType.ExclusiveKeyword)
                                 newFunction.scope = AccessLevel.Exclusive;
 
-                            //If the function isn't exclusive
-                            if (newFunction.scope != AccessLevel.Exclusive)
-                            {
-                                //Use identifier as the new variable's name and skip the next iteration
-                                newFunction.name = tokensToCheck[i + 1].value;
+                            //Use identifier as the new variable's name and skip the next iteration
+                            newFunction.name = tokensToCheck[i + 1].value;
 
-                                //Set parent script to the file that the function comes from
-                                newFunction.parentScript = fileName;
+                            //Set parent script to the file that the function comes from
+                            newFunction.parentScript = fileName;
 
-                                //Add the function to the external functions
-                                externalFunctions.Add(newFunction);
+                            //Add the function to the external functions
+                            externalFunctions.Add(newFunction);
 
-                                //Skip the next iteration (the identifier that we just handled) and advance to the opening parenthesis
-                                i += 2;
+                            //Skip the next iteration (the identifier that we just handled) and advance to the opening parenthesis
+                            i += 2;
 
-                                //Handle defined parameters ('i' should be the iteration containing the open parenthesis)
-                                //Set the iteration to whatever it is after the parameters are handled
-                                i = HandleDefinedParameters(i, newFunction, tokensToCheck);
-                                i -= 1;
-                            }
-
-                            //If it is, then break out
-                            else
-                            {
-                                break;
-                            }
+                            //Handle defined parameters ('i' should be the iteration containing the open parenthesis)
+                            //Set the iteration to whatever it is after the parameters are handled
+                            i = HandleDefinedParameters(i, newFunction, tokensToCheck);
+                            i -= 1;
 
                             i += 1;
                         }

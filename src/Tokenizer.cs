@@ -19,7 +19,6 @@ namespace Crossover
         //Returns a list of tokens from the input
         public List<Token> InputToTokensList(string _input)
         {
-
             input = _input;
             inputChars = _input.ToCharArray();
 

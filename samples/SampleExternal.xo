@@ -1,6 +1,12 @@
 ﻿var myVar = 2;
 
+exclusive var checkIt = 'Checked!';
+
 function DoTing(var yah, var nah) {
     print myVar;
 	print 'From External Function "DoTing()":';
+}
+
+function Oi () {
+	print 'OI!';
 }

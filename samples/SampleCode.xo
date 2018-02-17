@@ -24,3 +24,5 @@ function Nuevo() {
 }
 
 Nuevo();
+
+external.SampleExternal.Oi();
