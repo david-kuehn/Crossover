@@ -1,4 +1,5 @@
 ﻿var myVar = 2;
+var oiString = 'OI!' + ' COYI!';
 
 exclusive var checkIt = 'Checked!';
 
@@ -8,5 +9,5 @@ function DoTing(var yah, var nah) {
 }
 
 function Oi () {
-	print 'OI!';
+	print oiString;
 }

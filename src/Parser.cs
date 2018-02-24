@@ -538,54 +538,107 @@ namespace Crossover
                     case TokenType.IntVariable:
                     case TokenType.FloatVariable:
 #region
-
-                        //If this is not in an external script
-                        if (!isInExternalScript)
+                        //If the previous token is an equals AND not the 'use' keyword AND we are NOT in parameters, if the token 2 iterations back is an identifier
+                        if (tokenList[i - 1].type == TokenType.Equals && tokenList[i - 1].type != TokenType.UseKeyword && !inParams)
                         {
-                            //If the previous token is an equals AND not the 'use' keyword AND we are NOT in parameters, if the token 2 iterations back is an identifier
-                            if (tokenList[i-1].type == TokenType.Equals && tokenList[i - 1].type != TokenType.UseKeyword && !inParams)
+                            //If the token 2 back is an identifier
+                            if (tokenList[i - 2].type == TokenType.Identifier)
                             {
-                                //If the token 2 back is an identifier
-                                if (tokenList[i-2].type == TokenType.Identifier)
-                                {
-                                    Variable theVar = new Variable();
+                                Variable theVar = new Variable();
 
-                                    //If we are in a function (we need to look for parameters as well)
-                                    if (isInFunction)
+                                //If we are in a function (we need to look for parameters as well)
+                                if (isInFunction)
+                                {
+                                    //Loop through this function's parameters
+                                    foreach (Parameter param in funcBeingExecuted.parameters)
                                     {
-                                        //Loop through this function's parameters
-                                        foreach (Parameter param in funcBeingExecuted.parameters)
+                                        //If the parameter's variable matches the name of the variable we are looking for
+                                        if (param.parameterVariable.name == tokenList[i - 2].value)
                                         {
-                                            //If the parameter's variable matches the name of the variable we are looking for
-                                            if (param.parameterVariable.name == tokenList[i - 2].value)
+                                            //If the next token is an operator
+                                            if (tokenList[i + 1].type == TokenType.MathematicalOperator)
+                                            {
+                                                //Check if the tokens are operable
+                                                if (CheckOperable(tokenList[i], tokenList[i + 2]))
+                                                {
+                                                    List<Token> tokensToEval = new List<Token>();
+
+                                                    //Add each token that we need to evaluate to tokensToEval
+                                                    for (int x = 0; x < 3; x++)
+                                                        tokensToEval.Add(tokenList[i + x]);
+
+                                                    //Try to evaluate the expression
+                                                    Variable evaluatedVar = TryEvaluate(tokensToEval);
+
+                                                    //Set the value of the variable to the value of the evaluated expression
+                                                    theVar.type = evaluatedVar.type;
+                                                    theVar.name = evaluatedVar.name;
+                                                }
+                                            }
+
+                                            //If the next token is a line ending
+                                            else if (tokenList[i + 1].type == TokenType.LineEnding)
                                             {
                                                 //Set the parameter's variable's type and value equal to this token's type and value
                                                 theVar.type = tokenList[i].type;
                                                 theVar.value = tokenList[i].value;
                                             }
+
+                                            //If the next token is not an operator or a line ending, throw error
+                                            else
+                                                CrossoverCompiler.ThrowCompilerError("Could not set variable: " + theVar.name, tokenList[i].isOnLine);
+                                        }
+                                    }
+                                }
+
+                                //If we are not in a function
+                                else
+                                {
+                                    //Get the variable with the identifier's name
+                                    theVar = GetVariableByName(tokenList[i - 2].value, tokenList[i - 2].isOnLine, false);
+
+                                    //If the next token is an operator
+                                    if (tokenList[i + 1].type == TokenType.MathematicalOperator)
+                                    {
+                                        //Check if the tokens are operable
+                                        if (CheckOperable(tokenList[i], tokenList[i + 2]))
+                                        {
+                                            List<Token> tokensToEval = new List<Token>();
+
+                                            //Add each token that we need to evaluate to tokensToEval
+                                            for (int x = 0; x < 3; x++)
+                                                tokensToEval.Add(tokenList[i + x]);
+
+                                            //Try to evaluate the expression
+                                            Variable evaluatedVar = TryEvaluate(tokensToEval);
+
+                                            //Set the value of the variable to the value of the evaluated expression
+                                            theVar.type = evaluatedVar.type;
+                                            theVar.value = evaluatedVar.value;
                                         }
                                     }
 
-                                    //If we are not in a function
-                                    else
+                                    //If the next token is a line ending
+                                    else if (tokenList[i + 1].type == TokenType.LineEnding)
                                     {
-                                        //Get the variable with the identifier's name
-                                        theVar = GetVariableByName(tokenList[i - 2].value, tokenList[i - 2].isOnLine, false);
-
-                                        //Set the variable's type and value equal to this token's type and value
+                                        //Set the parameter's variable's type and value equal to this token's type and value
                                         theVar.type = tokenList[i].type;
                                         theVar.value = tokenList[i].value;
                                     }
-                                }
 
-                                //If the token 2 back is NOT an identifier
-                                else
-                                {
-                                    //Throw an error
-                                    CrossoverCompiler.ThrowCompilerError("Variable values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
+                                    //If the next token is not an operator or a line ending, throw error
+                                    else
+                                        CrossoverCompiler.ThrowCompilerError("Could not set variable: " + theVar.name, tokenList[i].isOnLine);
                                 }
                             }
-                            
+
+                            //If the token 2 back is NOT an identifier
+                            else
+                            {
+                                //Throw an error
+                                CrossoverCompiler.ThrowCompilerError("Variable values must be used to set a valid variable or compare to another string value", tokenList[i].isOnLine);
+                            }
+
                             //Else if the previous token is an equals AND we ARE in parameters !!! EDIT: should handle in 'if' declaration
 
                             break;
@@ -1183,15 +1236,50 @@ namespace Crossover
                         //If the previous token is an equals AND we are NOT in parameters, if the token 2 iterations back is an identifier
                         if (tokensToCheck[i - 1].type == TokenType.Equals && !inParams)
                         {
-                            if (tokensToCheck[i - 2].type == TokenType.Identifier)
+                            //If the previous token is an equals AND not the 'use' keyword AND we are NOT in parameters, if the token 2 iterations back is an identifier
+                            if (tokensToCheck[i - 1].type == TokenType.Equals && tokensToCheck[i - 1].type != TokenType.UseKeyword && !inParams)
                             {
-                                //Get the variable with the identifier's name, and set its value equal to this token's value
-                                GetVariableByName(tokensToCheck[i - 2].value, tokensToCheck[i - 2].isOnLine, true).value = tokensToCheck[i].value;
-                            }
+                                //If the token 2 back is an identifier
+                                if (tokensToCheck[i - 2].type == TokenType.Identifier)
+                                {
+                                    Variable theVar = new Variable();
 
-                            else
-                            {
-                                CrossoverCompiler.ThrowCompilerError("String values must be used to set a valid variable or compare to another string value", tokensToCheck[i].isOnLine);
+                                    //Get the variable with the identifier's name
+                                    theVar = GetVariableByName(tokensToCheck[i - 2].value, tokensToCheck[i - 2].isOnLine, true);
+
+                                    //If the next token is an operator
+                                    if (tokensToCheck[i + 1].type == TokenType.MathematicalOperator)
+                                    {
+                                        //Check if the tokens are operable
+                                        if (CheckOperable(tokensToCheck[i], tokensToCheck[i + 2]))
+                                        {
+                                            List<Token> tokensToEval = new List<Token>();
+
+                                            //Add each token that we need to evaluate to tokensToEval
+                                            for (int x = 0; x < 3; x++)
+                                                tokensToEval.Add(tokensToCheck[i + x]);
+
+                                            //Try to evaluate the expression
+                                            Variable evaluatedVar = TryEvaluate(tokensToEval);
+
+                                            //Set the value of the variable to the value of the evaluated expression
+                                            theVar.type = evaluatedVar.type;
+                                            theVar.value = evaluatedVar.value;
+                                        }
+                                    }
+
+                                    //If the next token is a line ending
+                                    else if (tokensToCheck[i + 1].type == TokenType.LineEnding)
+                                    {
+                                        //Set the parameter's variable's type and value equal to this token's type and value
+                                        theVar.type = tokensToCheck[i].type;
+                                        theVar.value = tokensToCheck[i].value;
+                                    }
+
+                                    //If the next token is not an operator or a line ending, throw error
+                                    else
+                                        CrossoverCompiler.ThrowCompilerError("Could not set variable: " + theVar.name, tokensToCheck[i].isOnLine);
+                                }
                             }
                         }
 

@@ -1,13 +1,20 @@
 use 'D:\Crossover\samples\SampleExternal.xo' as SampleExternal;
 
-var myInt = 14                 //Int variable, identifier is myInt, declared by 'var';
-var myString = 'My age is: '   //String variable, identifier is myString, SINGLE QUOTES ONLY, declared by 'var';
-var theTime = 8.35             //Float variable, identifier is theTime, declared by 'var';
+//String variable, identifier is myString, SINGLE QUOTES ONLY, declared by 'var';
+var myString = 'My age is: ';
 
+//Float variable, identifier is theTime, declared by 'var';
+var theTime = 8.35;
+
+//Int variable, identifier is myInt, declared by 'var';
+var myInt = 7;
+
+//Will print 7;
 print myInt;
 
-myInt = 3;
+myInt = 3 * 5;
 
+//Will print 15;
 print myInt;
 
 external.SampleExternal.DoTing(1, 2);
