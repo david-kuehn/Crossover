@@ -178,7 +178,7 @@ namespace Crossover
                             i += 1;
                         }
 
-                        //Else if we are passed an external declaration
+                        //Else if we are passed an external declaration (to print external variables)
                         if (followingToken.type == TokenType.ExternalKeyword)
                         {
                             Variable varToPrint = new Variable();
@@ -532,6 +532,7 @@ namespace Crossover
 
                         break;
                     #endregion
+                        /*
                     //If token is a string, bool, int, or float variable VALUE, not NAME
                     case TokenType.StringVariable:
                     case TokenType.BoolVariable:
@@ -664,8 +665,234 @@ namespace Crossover
                         }
 
                         break;
-#endregion
+#endregion */
+                    //If the token is an equals (=)
+                    case TokenType.Equals:
+#region
+                        Token variableToken = tokenList[i - 1];
+                        List<Token> setToTokens = new List<Token>();
 
+                        //If the previous token is not an identifier, throw error
+                        if (variableToken.type != TokenType.Identifier)
+                            CrossoverCompiler.ThrowCompilerError("Cannot assign values to non-variables", variableToken.isOnLine);
+                        
+                        //
+                        //Handle GETTING the variable
+                        //
+
+                        Variable varToSet = new Variable();
+                        bool foundVar = false;
+
+                        //If we are in a function (check if the variable we are setting is a parameter)
+                        if (isInFunction)
+                        {
+                            Variable resultOfParamSearch = GetParameterByName(variableToken.value, funcBeingExecuted);
+
+                            //If the parameter seach did NOT return null
+                            if (resultOfParamSearch != null)
+                            {
+                                //Set the variable to the parameter that we found
+                                varToSet = resultOfParamSearch;
+                                foundVar = true;
+                            }
+                        }
+
+                        //If we did not find a parameter (either we are not in a function or no parameter with that name existed)
+                        if (!foundVar)
+                        {
+                            //Get the variable that we are setting
+                            varToSet = GetVariableByName(variableToken.value, variableToken.isOnLine, isInExternalScript);
+                            foundVar = true;
+                        }
+
+                        //
+                        //Handle SETTING the variable
+                        //
+
+                        //Advance to the token following the equals
+                        i += 1;
+
+                        //While there are tokens in between the equals and the line ending (get all the tokens we are setting equal to)
+                        while (tokenList[i].type != TokenType.LineEnding)
+                        {
+                            //Add the current token to the list of tokens that we are setting equal to
+                            setToTokens.Add(tokenList[i]);
+
+                            //Go to the next token
+                            i++;
+                        }
+
+                        //If we are only setting equal to one token
+                        if (setToTokens.Count == 1)
+                        {
+                            //Get the first and only token in the list
+                            Token tokenToSetTo = setToTokens[0];
+
+                            //Switch through the possible TokenTypes
+                            switch (tokenToSetTo.type)
+                            {
+                                //If token is an identifier (setting this variable's value to another variable's value)
+                                case TokenType.Identifier:
+                                    bool foundVarToSetTo = false;
+
+                                    //If we are in a function (look for a parameter with that name)
+                                    if (isInFunction)
+                                    {
+                                        Variable resultOfParamSearch = GetParameterByName(tokenToSetTo.value, funcBeingExecuted);
+
+                                        //If the parameter seach did NOT return null
+                                        if (resultOfParamSearch != null)
+                                        {
+                                            //Set the variable's type and value to the parameter's type and value
+                                            varToSet.value = resultOfParamSearch.value;
+                                            varToSet.type = resultOfParamSearch.type;
+                                            foundVarToSetTo = true;
+                                        }
+                                    }
+
+                                    //If we're not in a function or we didn't find a parameter
+                                    if (!foundVarToSetTo)
+                                    {
+                                        Variable resultOfVariableSearch = GetVariableByName(tokenToSetTo.value, tokenToSetTo.isOnLine, isInExternalScript);
+
+                                        //Set the variable's type and value to the type and value of the variable that we found
+                                        varToSet.value = resultOfVariableSearch.value;
+                                        varToSet.type = resultOfVariableSearch.type;
+                                        foundVar = true;
+                                    }
+
+                                    break;
+
+                                //If token is a string, bool, int, or float value (giving this variable a raw value)
+                                case TokenType.StringVariable:
+                                case TokenType.BoolVariable:
+                                case TokenType.IntVariable:
+                                case TokenType.FloatVariable:
+
+                                    //Set the variable's value and type to this value and type
+                                    varToSet.value = tokenToSetTo.value;
+                                    varToSet.type = tokenToSetTo.type;
+
+                                    break;
+
+                                //If no valid type can be found, throw an error
+                                default:
+                                    CrossoverCompiler.ThrowCompilerError(string.Format("Could not set variable {0} equal to {1}", variableToken.value, tokenToSetTo.value), tokenToSetTo.isOnLine);
+                                    break;
+                            }
+                        }
+
+                        //If we are setting the variable to more than one token (handles math)
+                        else if (setToTokens.Count > 1)
+                        {
+                            //Can remove this inner 'if' loop and just move everything inside of the bigger loop
+                            //If there are more than 3 tokens following the equals
+                            if (setToTokens.Count >= 3)
+                            {
+                                //Check for variables passed and replace them with their values
+                                //For every token that was passed
+                                for (int x = 0; x < setToTokens.Count; x++)
+                                {
+                                    Token currentToken = setToTokens[x];
+
+                                    //If the current token is an identifier
+                                    if (currentToken.type == TokenType.Identifier)
+                                    {
+                                        bool foundVarToSetTo = false;
+
+                                        //If we are in a function (look for a parameter with that name)
+                                        if (isInFunction)
+                                        {
+                                            Variable resultOfParamSearch = GetParameterByName(currentToken.value, funcBeingExecuted);
+
+                                            //If the parameter seach did NOT return null
+                                            if (resultOfParamSearch != null)
+                                            {
+                                                //Replace the token with the value of the parameter found
+                                                currentToken.value = resultOfParamSearch.value;
+                                                currentToken.type = resultOfParamSearch.type;
+                                                foundVarToSetTo = true;
+                                            }
+                                        }
+
+                                        //If we're not in a function or we didn't find a parameter
+                                        if (!foundVarToSetTo)
+                                        {
+                                            Variable resultOfVariableSearch = GetVariableByName(currentToken.value, currentToken.isOnLine, isInExternalScript);
+
+                                            //Replace the token with the value of the variable found
+                                            currentToken.value = resultOfVariableSearch.value;
+                                            currentToken.type = resultOfVariableSearch.type;
+                                            foundVar = true;
+                                        }
+                                    }
+                                }
+
+                                //
+                                //ERROR CHECKS
+                                //
+
+                                //Check syntax
+                                //For each token following the equals
+                                for (int a = 0; a < setToTokens.Count; a++)
+                                {
+                                    //If the iteration is 0 or an even number
+                                    if (a == 0 || a % 2 == 0)
+                                    {
+                                        //If the token is NOT a raw value type or an identifier, throw error
+                                        if (setToTokens[a].type != TokenType.Identifier && setToTokens[a].type != TokenType.StringVariable && setToTokens[a].type != TokenType.BoolVariable && setToTokens[a].type != TokenType.IntVariable && setToTokens[a].type != TokenType.FloatVariable)
+                                            CrossoverCompiler.ThrowCompilerError("Invalid expression", setToTokens[a].isOnLine);
+                                    }
+
+                                    //If the iteration is an odd number
+                                    else
+                                    {
+                                        //If the token is NOT an operator, throw error
+                                        if (setToTokens[a].type != TokenType.MathematicalOperator)
+                                            CrossoverCompiler.ThrowCompilerError("Invalid expression", setToTokens[a].isOnLine);
+                                    }
+                                }
+
+                                //Check if each math token is operable with every other one involved in the expression (two-dimensional loop)
+                                //For each token following the equals (first dimension)
+                                for (int x = 0; x < setToTokens.Count; x++)
+                                {
+                                    //If the token from the first dimension is NOT an operator (we don't want to check if 'operators' are operable)
+                                    if (setToTokens[x].type != TokenType.MathematicalOperator)
+                                    {
+                                        //AGAIN, for each token following the equals (second dimension)
+                                        for (int y = 0; y < setToTokens.Count; y++)
+                                        {
+                                            //If the token from the second dimension is NOT an operator (we don't want to check if 'operators' are operable)
+                                            if (setToTokens[y].type != TokenType.MathematicalOperator)
+                                            {
+                                                //If the tokens from each dimension are NOT operable, throw error
+                                                if (!CheckOperable(setToTokens[x], setToTokens[y]))
+                                                    CrossoverCompiler.ThrowCompilerError("Inoperable types", setToTokens[x].isOnLine);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                //
+                                //END ERROR CHECKS
+                                //
+
+                                //Try to evaluate the tokens following the equals
+                                Variable setToVariable = TryEvaluate(setToTokens);
+
+                                //Set the variable's value and type to the evaluated value and type
+                                varToSet.value = setToVariable.value;
+                                varToSet.type = setToVariable.type;
+                            }
+                        }
+
+                        //If zero tokens were passed, throw error
+                        else
+                            CrossoverCompiler.ThrowCompilerError("Invalid expression", tokenList[i].isOnLine);
+
+                        break;
+#endregion
                     //Default exit
                     default:
                         break;
@@ -998,6 +1225,9 @@ namespace Crossover
 
             DataTable dtTool = new DataTable();
 
+            string tokensValueString = UtilityTools.TokenListToString(tokensToEvaluate);
+            OperationType operationToPerform = new OperationType();
+
             //For every token in the tokens that need to be evaluated
             for (int i = 0; i < tokensToEvaluate.Count; i++)
             {
@@ -1032,17 +1262,18 @@ namespace Crossover
                             //If the first token is an int or a float
                             case TokenType.IntVariable:
                             case TokenType.FloatVariable:
-                                //Compute result of expression
-                                varToReturn.value = dtTool.Compute(firstToken.value + operatorToUse.value + currentToken.value, "").ToString();
+                                //Designate which operation to perform
+                                operationToPerform = OperationType.Num;
 
                                 break;
 
                             case TokenType.StringVariable:
+                                //Designate which operation to perform
+                                operationToPerform = OperationType.String;
+
                                 //If the operater that we're going to use is not a plus, throw an error
                                 if (operatorToUse.value != '+'.ToString())
                                     CrossoverCompiler.ThrowCompilerError("Strings can only be added to.", currentToken.isOnLine);
-
-                                varToReturn.value = firstToken.value + currentToken.value;
 
                                 break;
 
@@ -1054,6 +1285,44 @@ namespace Crossover
                     //If the tokens are invalid to operate on, throw an error
                     else
                         CrossoverCompiler.ThrowCompilerError(string.Format("Cannot operate on types of {0} and {1}.", firstToken.type.ToString(), currentToken.type.ToString()), currentToken.isOnLine);
+                }
+            }
+
+
+            //If the operation is on numbers
+            if (operationToPerform == OperationType.Num)
+            {
+                string resultOfComputation = dtTool.Compute(tokensValueString, "").ToString();
+
+                //Compute result of expression
+                varToReturn.value = resultOfComputation;
+
+                //If the result of the computation is an integer
+                if (int.TryParse(resultOfComputation, out int n))
+                {
+                    //Set the type of the variable being returned to an int
+                    varToReturn.type = TokenType.IntVariable;
+                }
+
+                //If the result of the computation is NOT an integer
+                else
+                {
+                    //Set the type of the variable being returned to a float
+                    varToReturn.type = TokenType.FloatVariable;
+                }
+            }
+
+            else if (operationToPerform == OperationType.String)
+            {
+                //Set the type of the variable being returned to StringVariable
+                varToReturn.type = TokenType.StringVariable;
+
+                //Foreach token to operate on
+                foreach (Token tkn in tokensToEvaluate)
+                {
+                    //If the token is a string value, add it to the value to return
+                    if (tkn.type == TokenType.StringVariable)
+                        varToReturn.value += tkn.value;
                 }
             }
 
@@ -1323,6 +1592,23 @@ namespace Crossover
             CrossoverCompiler.ThrowCompilerError("No variable found with the name: " + varName, onLine);
 
             //TECHNICALLY UNREACHABLE, ThrowCompilerError() stops execution
+            return null;
+        }
+
+        //Use to get a parameter by name in a function
+        public Variable GetParameterByName(string paramName, Function getParamsFromFunc)
+        {
+            //Foreach of the function's parameters
+            foreach (Parameter param in getParamsFromFunc.parameters)
+            {
+                //If the name of the parameter matches the name we're looking for
+                if (param.parameterVariable.name == paramName)
+                {
+                    //Return that parameter
+                    return param.parameterVariable;
+                }
+            }
+
             return null;
         }
     }

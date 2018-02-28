@@ -75,4 +75,10 @@ namespace Crossover
         Public,
         Exclusive   //exclusive keyword
     }
+
+    enum OperationType
+    {
+        Num,
+        String
+    }
 }

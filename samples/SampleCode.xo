@@ -17,6 +17,10 @@ myInt = 3 * 5;
 //Will print 15;
 print myInt;
 
+myInt = 45 * theTime;
+
+print myInt;
+
 external.SampleExternal.DoTing(1, 2);
 
 function DoNewTing(var myTing, var myNumber) {
