@@ -128,8 +128,100 @@ namespace Crossover
                             break;
                         }
                         break;
-                        
+
                     #endregion
+                    //If token is an 'if' loop declaration
+                    case TokenType.IfKeyword:
+#region
+                        Token firstItem = tokenList[i + 1];
+                        Token comparisonOperator = tokenList[i + 2];
+                        Token secondItem = tokenList[i + 3];
+
+                        List<Token> loopContents = new List<Token>();
+
+                        //If either item being compared is an identifier (a variable)
+                        if (firstItem.type == TokenType.Identifier || secondItem.type == TokenType.Identifier)
+                        {
+                            //If the first item is an identifier
+                            if (firstItem.type == TokenType.Identifier)
+                            {
+                                //Search for the variable being referenced
+                                Variable resultOfVarSearch = GetVariableByName(firstItem.value, firstItem.isOnLine, isInExternalScript);
+
+                                //Assign this token's value and type to the value and type of the referenced variable
+                                firstItem.value = resultOfVarSearch.value;
+                                firstItem.type = resultOfVarSearch.type;
+                            }
+
+                            //If the second item is an identifier
+                            if (secondItem.type == TokenType.Identifier)
+                            {
+                                //Search for the variable being referenced
+                                Variable resultOfVarSearch = GetVariableByName(secondItem.value, secondItem.isOnLine, isInExternalScript);
+
+                                //Assign this token's value and type to the value and type of the referenced variable
+                                secondItem.value = resultOfVarSearch.value;
+                                secondItem.type = resultOfVarSearch.type;
+                            }
+                        }
+
+                        //Get the result of the comparison within the 'if' loop
+                        bool resultOfComparison = HandleComparison(firstItem, comparisonOperator, secondItem);
+
+                        //Advance past the comparison
+                        i += 4;
+
+                        //If current token is not an opening curly brace, throw error
+                        if (tokenList[i].value != "{")
+                            CrossoverCompiler.ThrowCompilerError("If loop must start with an opening curly brace", tokenList[i].isOnLine);
+
+                        //Advance into the contents of the if loop
+                        i += 1;
+
+                        int startingDepthLevel = currentDepthLevel;
+
+                        //Go deeper by one level since we are in a new loop
+                        currentDepthLevel += 1;
+
+                        //Get the contents of the 'if' code block
+                        while (currentDepthLevel != startingDepthLevel)
+                        {
+                            Token currentToken = tokenList[i];
+
+                            //If we are starting a new loop within the if loop, go deeper by one level
+                            if (currentToken.value == "{")
+                                currentDepthLevel += 1;
+
+                            //If we are ending a loop within the if loop, go shallower by one level
+                            if (currentToken.value == "}")
+                            {
+                                //If the level after this closing brace is the level we started at
+                                if (currentDepthLevel - 1 == startingDepthLevel)
+                                {
+                                    //Go shallower a level
+                                    currentDepthLevel -= 1;
+
+                                    //Exit out of the while loop
+                                    break;
+                                }
+                            }
+
+                            //Add the token to the loop's contents
+                            loopContents.Add(currentToken);
+
+                            //Go to the next token
+                            i++;
+                        }
+
+                        //If the resultOfComparison is true
+                        if (resultOfComparison)
+                        {
+                            //Run the code inside the if loop
+                            RunBlock(loopContents);
+                        }
+
+                        break;
+#endregion
                     //If token is the 'print' keyword
                     case TokenType.PrintKeyword:
 #region
@@ -510,7 +602,7 @@ namespace Crossover
                         {
                             //If it is an opening brace (e.g. beginning of function)
                             case "{":
-                                int startingDepthLevel = currentDepthLevel;
+                                int beginningDepthLevel = currentDepthLevel;
 
                                 //Go deeper by one
                                 currentDepthLevel += 1;
@@ -523,7 +615,7 @@ namespace Crossover
                                 i += 1;
 
                                 //While the function is still open and has not been closed with a brace yet
-                                while (currentDepthLevel != startingDepthLevel)
+                                while (currentDepthLevel != beginningDepthLevel)
                                 {
                                     //If the token is an opening brace, add one to the depth level
                                     if (tokenList[i].value == "{")
@@ -535,7 +627,7 @@ namespace Crossover
                                         currentDepthLevel -= 1;
 
                                         //If the brace closes the function, break before it is added to the function's contents
-                                        if (currentDepthLevel == startingDepthLevel)
+                                        if (currentDepthLevel == beginningDepthLevel)
                                             break;
                                     }
 
@@ -560,7 +652,7 @@ namespace Crossover
                         }
 
                         break;
-                    #endregion
+#endregion
                     //If the token is an equals (=)
                     case TokenType.Equals:
 #region
@@ -1262,10 +1354,34 @@ namespace Crossover
                 return false;
         }
 
+        //Checks if a comparison returns true or false
+        bool HandleComparison(Token firstComp, Token compOperator, Token secondComp)
+        {
+            //If the operator is an equals
+            if (compOperator.type == TokenType.Equals)
+            {
+                //If the first value is equal to the second value, return true
+                if (firstComp.value == secondComp.value)
+                    return true;
+
+                //If the values are not equal
+                else
+                    return false;
+            }
+
+            return false;
+        }
+
         //Use to execute a function
         public void RunFunction(Function functionToRun, bool functionIsExternal)
         {
             ActOnTokens(functionToRun.contents, true, functionToRun, functionIsExternal);
+        }
+
+        //Use to execute a block of code
+        public void RunBlock(List<Token> blockToRun)
+        {
+            ActOnTokens(blockToRun, false, null, false);
         }
 
         //Use to find functions/variables in external file
