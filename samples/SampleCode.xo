@@ -21,6 +21,8 @@ function TrySetVar () {
 
 TrySetVar();
 
-if myInt = 11.85 {
+var randBool = true;
+
+if randBool = true {
 	print myInt;
 }

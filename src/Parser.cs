@@ -133,51 +133,34 @@ namespace Crossover
                     //If token is an 'if' loop declaration
                     case TokenType.IfKeyword:
 #region
-                        Token firstItem = tokenList[i + 1];
-                        Token comparisonOperator = tokenList[i + 2];
-                        Token secondItem = tokenList[i + 3];
+                        //Advance past the 'if' token
+                        i += 1;
 
+                        //Will contain the contents of the if loop itself
                         List<Token> loopContents = new List<Token>();
 
-                        //If either item being compared is an identifier (a variable)
-                        if (firstItem.type == TokenType.Identifier || secondItem.type == TokenType.Identifier)
+                        //Will contain the contents of the items being compared
+                        List<Token> comparisonContents = new List<Token>();
+
+                        //While the 'if' loop has not been opened yet
+                        //We will get the contents of the comparison
+                        while (tokenList[i].value != "{")
                         {
-                            //If the first item is an identifier
-                            if (firstItem.type == TokenType.Identifier)
-                            {
-                                //Search for the variable being referenced
-                                Variable resultOfVarSearch = GetVariableByName(firstItem.value, firstItem.isOnLine, isInExternalScript);
+                            //Add the current token to the list of comparison contents
+                            comparisonContents.Add(tokenList[i]);
 
-                                //Assign this token's value and type to the value and type of the referenced variable
-                                firstItem.value = resultOfVarSearch.value;
-                                firstItem.type = resultOfVarSearch.type;
-                            }
-
-                            //If the second item is an identifier
-                            if (secondItem.type == TokenType.Identifier)
-                            {
-                                //Search for the variable being referenced
-                                Variable resultOfVarSearch = GetVariableByName(secondItem.value, secondItem.isOnLine, isInExternalScript);
-
-                                //Assign this token's value and type to the value and type of the referenced variable
-                                secondItem.value = resultOfVarSearch.value;
-                                secondItem.type = resultOfVarSearch.type;
-                            }
+                            //Go to the next token in the list
+                            i++;
                         }
-
-                        //Get the result of the comparison within the 'if' loop
-                        bool resultOfComparison = HandleComparison(firstItem, comparisonOperator, secondItem);
-
-                        //Advance past the comparison
-                        i += 4;
 
                         //If current token is not an opening curly brace, throw error
                         if (tokenList[i].value != "{")
                             CrossoverCompiler.ThrowCompilerError("If loop must start with an opening curly brace", tokenList[i].isOnLine);
 
-                        //Advance into the contents of the if loop
+                        //Advance past the opening curly brace
                         i += 1;
 
+                        //Set the starting depth level to the current depth level
                         int startingDepthLevel = currentDepthLevel;
 
                         //Go deeper by one level since we are in a new loop
@@ -212,6 +195,32 @@ namespace Crossover
                             //Go to the next token
                             i++;
                         }
+
+                        //
+                        // Handle replacing the variables in the comparison with the values of the variables
+                        //
+
+                        //Foreach token in the comparison
+                        foreach (Token tkn in comparisonContents)
+                        {
+                            //If the token is an identifier
+                            if (tkn.type == TokenType.Identifier)
+                            {
+                                //Search for the variable being referenced
+                                Variable resultOfVarSearch = GetVariableByName(tkn.value, tkn.isOnLine, isInExternalScript);
+
+                                //Assign this token's value and type to the value and type of the referenced variable
+                                tkn.value = resultOfVarSearch.value;
+                                tkn.type = resultOfVarSearch.type;
+                            }
+                        }
+
+                        //
+                        // Handle the actual comparison and run the code inside the 'if' loop if necessary
+                        //
+
+                        //Get the result of the comparison within the 'if' loop
+                        bool resultOfComparison = HandleComparison(comparisonContents);
 
                         //If the resultOfComparison is true
                         if (resultOfComparison)
@@ -1355,18 +1364,30 @@ namespace Crossover
         }
 
         //Checks if a comparison returns true or false
-        bool HandleComparison(Token firstComp, Token compOperator, Token secondComp)
+        bool HandleComparison(List<Token> comparisonTokens)
         {
-            //If the operator is an equals
-            if (compOperator.type == TokenType.Equals)
+            //Foreach token that is a part of the comparison
+            for (int i = 0; i < comparisonTokens.Count; i++)
             {
-                //If the first value is equal to the second value, return true
-                if (firstComp.value == secondComp.value)
-                    return true;
+                Token currentToken = comparisonTokens[i];
 
-                //If the values are not equal
-                else
-                    return false;
+                //If the token is an equals sign
+                if (currentToken.type == TokenType.Equals)
+                {
+                    //If the following token is a boolean value
+                    if (comparisonTokens[i+1].type == TokenType.BoolVariable)
+                    {
+                        //If the previous token equals the value of the following token
+                        if (comparisonTokens[i - 1].value == comparisonTokens[i + 1].value)
+                        {
+                            return true;
+                        }
+
+                        //If they are not equal, return false
+                        else
+                            return false;
+                    }
+                }
             }
 
             return false;
